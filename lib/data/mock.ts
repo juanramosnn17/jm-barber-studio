@@ -1,0 +1,201 @@
+/* =====================================================================
+   DATOS DE EJEMPLO (lib/data/mock.ts)
+   ---------------------------------------------------------------------
+   Estos datos se muestran SOLO en "modo demostración", es decir,
+   mientras no hayas configurado Supabase en .env.local.
+   Son los mismos textos que venían en el diseño de Google Stitch.
+   Cuando conectes Supabase, la información real vendrá de la base de
+   datos y este archivo dejará de usarse.
+   ===================================================================== */
+
+import type { AppointmentWithDetails, BusinessHours, Profile, Service } from "@/lib/types";
+import { defaultSchedule } from "@/lib/config";
+import { toISODate } from "@/lib/format";
+
+/* ---------------------------------------------------------------------
+   SERVICIOS
+   EDITAR AQUÍ (modo demo): nombres, precios, duraciones e imágenes.
+   Para producción, edítalos en la tabla "services" de Supabase
+   (supabase/schema.sql incluye estos mismos datos iniciales).
+   --------------------------------------------------------------------- */
+export const mockServices: Service[] = [
+  {
+    id: "srv-1",
+    name: "Corte de cabello",
+    short_name: "Corte de cabello",
+    description:
+      "Corte técnico personalizado a tijera y máquina según morfología facial, incluye lavado revitalizante, tónico de cuero cabelludo y peinado final.",
+    includes: "Lavado + Peinado + Asesoría rápida",
+    price: 25000,
+    duration_label: "35-40 min",
+    duration_minutes: 40,
+    image_url: "/images/servicios/corte-cabello.jpg",
+    icon: "content_cut",
+    is_active: true,
+    sort_order: 1,
+  },
+  {
+    id: "srv-2",
+    name: "Arreglo de barba",
+    short_name: "Corte de barba",
+    description:
+      "Perfilado milimétrico con navaja clásica, tratamiento con toallas calientes aromáticas e hidratación intensiva con aceites orgánicos.",
+    includes: "Toalla caliente + Aceites esenciales",
+    price: 18000,
+    duration_label: "25-30 min",
+    duration_minutes: 30,
+    image_url: "/images/servicios/arreglo-barba.jpg",
+    icon: "face",
+    is_active: true,
+    sort_order: 2,
+  },
+  {
+    id: "srv-3",
+    name: "Arreglo de cejas",
+    short_name: "Arreglo de cejas",
+    description:
+      "Diseño, definición y limpieza de cejas respetando la armonía de la mirada mediante técnica combinada de navaja y tijera de precisión.",
+    includes: "Perfilado con navaja + Fijación",
+    price: 10000,
+    duration_label: "15 min",
+    duration_minutes: 15,
+    image_url: "/images/servicios/arreglo-cejas.jpg",
+    icon: "brush",
+    is_active: true,
+    sort_order: 3,
+  },
+  {
+    id: "srv-4",
+    name: "Corte Pro (Cabello + Barba)",
+    short_name: "Corte Pro",
+    description:
+      "Servicio combinado de corte técnico integral a tijera y máquina con perfilado y ritual de toalla caliente para barba.",
+    includes: "Cabello + Barba completa + Toalla caliente",
+    price: 38000,
+    duration_label: "50-60 min",
+    duration_minutes: 60,
+    image_url: "/images/servicios/corte-pro.jpg",
+    icon: "stars",
+    is_active: true,
+    sort_order: 4,
+  },
+  {
+    id: "srv-5",
+    name: "Corte Pro Max (Cabello + Barba + Cejas)",
+    short_name: "Corte Pro Max",
+    description:
+      "Experiencia total de cuidado facial y capilar: corte completo, diseño integral de barba con toalla caliente infusionada y limpieza precisa de cejas.",
+    includes: "Cabello + Barba + Cejas + Toalla aromática",
+    price: 45000,
+    duration_label: "65-75 min",
+    duration_minutes: 75,
+    image_url: "/images/servicios/corte-pro-max.jpg",
+    icon: "workspace_premium",
+    is_active: true,
+    sort_order: 5,
+  },
+  {
+    id: "srv-6",
+    name: "Corte Ultra Pro Max",
+    short_name: "Corte Ultra Pro Max",
+    description:
+      "El ritual insignia definitivo: corte morfológico a medida, barba con doble toalla y vapor, cejas, más asesoría personalizada de imagen y estilismo exclusivo.",
+    includes: "Corte + Barba + Cejas + Asesoría de Imagen",
+    price: 60000,
+    duration_label: "80-90 min",
+    duration_minutes: 90,
+    image_url: "/images/servicios/arreglo-cejas.jpg",
+    icon: "diamond",
+    is_active: true,
+    sort_order: 6,
+  },
+];
+
+/* ---------------------------------------------------------------------
+   USUARIOS DE EJEMPLO
+   --------------------------------------------------------------------- */
+export const mockClient: Profile = {
+  id: "user-cliente",
+  first_name: "Fabian",
+  last_name: "Reyes",
+  email: "cliente@jmbarber.com",
+  phone: "+57 300 000 0000",
+  role: "cliente",
+  avatar_url: "/images/avatares/cliente.jpg",
+  reminders_opt_in: true,
+};
+
+export const mockAdmin: Profile = {
+  id: "user-admin",
+  first_name: "Juan Felipe",
+  last_name: "Ortiz Ramos",
+  email: "director@jmbarberstudio.com",
+  phone: "+57 310 980 4421",
+  role: "admin",
+  avatar_url: "/images/avatares/admin.jpg",
+  reminders_opt_in: true,
+};
+
+export const mockProfiles: Profile[] = [
+  mockAdmin,
+  { id: "u4", first_name: "Marcos", last_name: "Silva", email: "marcos.barber@jmbarberstudio.com", phone: "+57 315 220 9011", role: "cliente", avatar_url: null, reminders_opt_in: true },
+  { id: "u5", first_name: "Carlos", last_name: "Mendoza", email: "carlos.mendoza@email.com", phone: "+57 612 345 678", role: "cliente", avatar_url: null, reminders_opt_in: true },
+  { id: "u6", first_name: "David", last_name: "Rivas", email: "david.rivas@gmail.com", phone: "+57 619 882 110", role: "cliente", avatar_url: null, reminders_opt_in: false },
+  { id: "u7", first_name: "Andrés", last_name: "Romero", email: "andres.romero@email.com", phone: "+57 301 555 0101", role: "cliente", avatar_url: null, reminders_opt_in: true },
+  { id: "u8", first_name: "Juan", last_name: "Pérez", email: "juan.perez@email.com", phone: "+57 302 444 0202", role: "cliente", avatar_url: null, reminders_opt_in: true },
+  mockClient,
+];
+
+/* ---------------------------------------------------------------------
+   CITAS DE EJEMPLO
+   Se generan con la fecha de HOY para que el panel siempre tenga datos.
+   --------------------------------------------------------------------- */
+function daysFromToday(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return toISODate(d);
+}
+
+export function getMockTodayAppointments(): AppointmentWithDetails[] {
+  const today = daysFromToday(0);
+  return [
+    { id: "a1", client_id: "u5", service_id: "srv-1", client_name: "Carlos Mendoza", service_name: "Corte Clásico Signature", barber_name: "Marcos Silva", chair: "Sillón 01", date: today, time: "09:30", status: "completada", notes: null },
+    { id: "a2", client_id: "u6", service_id: "srv-2", client_name: "David Rivas", service_name: "Afeitado Tradicional a Navaja", barber_name: "Mateo Gómez", chair: "Sillón 02", date: today, time: "11:00", status: "completada", notes: null },
+    { id: "a3", client_id: "u8", service_id: "srv-4", client_name: "Juan Pérez", service_name: "Corte + Barba Ritual", barber_name: "Marcos Silva", chair: "Sillón 01", date: today, time: "16:00", status: "confirmada", notes: null },
+    { id: "a4", client_id: "u7", service_id: "srv-2", client_name: "Andrés Romero", service_name: "Perfilado de Barba", barber_name: "Mateo Gómez", chair: "Sillón 02", date: today, time: "17:30", status: "pendiente", notes: null },
+  ];
+}
+
+export function getMockNextAppointment(): AppointmentWithDetails {
+  return {
+    id: "a-next",
+    client_id: mockClient.id,
+    service_id: "srv-4",
+    client_name: `${mockClient.first_name} ${mockClient.last_name}`,
+    service_name: "Corte + Barba",
+    duration_label: "60 min",
+    barber_name: "Marcos Silva",
+    chair: "Sillón 01",
+    date: daysFromToday(3),
+    time: "16:00",
+    status: "confirmada",
+    notes: null,
+  };
+}
+
+/** Horas ya ocupadas (demo): se simulan algunas para que se vean deshabilitadas. */
+export const mockBookedSlots = ["10:00", "12:30", "18:00"];
+
+/* ---------------------------------------------------------------------
+   HORARIO DE ATENCIÓN (demo)
+   --------------------------------------------------------------------- */
+export const mockBusinessHours: BusinessHours = {
+  id: 1,
+  open_days: defaultSchedule.openDays,
+  open_time: defaultSchedule.openTime,
+  close_time: defaultSchedule.closeTime,
+  break_start: defaultSchedule.breakStart,
+  break_end: defaultSchedule.breakEnd,
+  slot_minutes: defaultSchedule.slotMinutes,
+  barbers_count: 2,
+};

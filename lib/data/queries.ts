@@ -1,0 +1,238 @@
+/* =====================================================================
+   CONSULTAS DE DATOS (lib/data/queries.ts)
+   ---------------------------------------------------------------------
+   Todas las LECTURAS a la base de datos están aquí, en un solo lugar.
+   Si Supabase está configurado lee de la base de datos remota;
+   si no, lee del store en memoria reactivo.
+   ===================================================================== */
+
+import "server-only";
+import { cache } from "react";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { toISODate } from "@/lib/format";
+import { getSessionUserProfile } from "@/lib/auth/session";
+import type {
+  AppointmentStatus,
+  AppointmentWithDetails,
+  BusinessHours,
+  Profile,
+  Service,
+  UserRole,
+} from "@/lib/types";
+import {
+  getAllUsers,
+  getClientNextAppointment,
+  getStoredAppointments,
+  getStoredBusinessHours,
+  getStoredServices,
+} from "./store";
+import { mockAdmin, mockClient } from "./mock";
+
+/** Forma de una fila de "appointments" cuando pedimos también sus relaciones. */
+type AppointmentRow = {
+  id: string;
+  client_id: string;
+  service_id: string;
+  barber_name: string | null;
+  chair: string | null;
+  date: string;
+  time: string;
+  status: AppointmentStatus;
+  notes: string | null;
+  service: { name: string; duration_label: string } | null;
+  client: { first_name: string; last_name: string } | null;
+};
+
+/** Convierte una fila de Supabase en el formato que usan los componentes. */
+function mapAppointment(row: AppointmentRow): AppointmentWithDetails {
+  return {
+    id: row.id,
+    client_id: row.client_id,
+    service_id: row.service_id,
+    barber_name: row.barber_name,
+    chair: row.chair,
+    date: row.date,
+    time: row.time.slice(0, 5),
+    status: row.status,
+    notes: row.notes,
+    service_name: row.service?.name ?? "Servicio",
+    duration_label: row.service?.duration_label,
+    client_name: row.client ? `${row.client.first_name} ${row.client.last_name}` : "Cliente",
+  };
+}
+
+const APPOINTMENT_SELECT =
+  "id, client_id, service_id, barber_name, chair, date, time, status, notes, service:services(name, duration_label), client:profiles(first_name, last_name)";
+
+/* ---------------------------------------------------------------------
+   USUARIO ACTUAL
+   --------------------------------------------------------------------- */
+export const getCurrentProfile = cache(
+  async (demoRoleFallback?: UserRole): Promise<Profile | null> => {
+    // 1. Revisar si hay sesión activa en cookies locales
+    const sessionProfile = await getSessionUserProfile();
+    if (sessionProfile) return sessionProfile;
+
+    // 2. Si Supabase está configurado, revisar Supabase Auth
+    if (isSupabaseConfigured()) {
+      const supabase = await createClient();
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return null;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", auth.user.id)
+        .single<Profile>();
+
+      return profile ?? null;
+    }
+
+    // 3. Fallback de rol si se solicitó explícitamente para previsualizaciones
+    if (demoRoleFallback === "admin") return mockAdmin;
+    if (demoRoleFallback === "cliente") return mockClient;
+
+    return null;
+  }
+);
+
+/* ---------------------------------------------------------------------
+   SERVICIOS
+   --------------------------------------------------------------------- */
+export async function getServices(options: { onlyActive?: boolean } = {}): Promise<Service[]> {
+  if (!isSupabaseConfigured()) {
+    return getStoredServices(options.onlyActive);
+  }
+
+  const supabase = await createClient();
+  let query = supabase.from("services").select("*").order("sort_order");
+  if (options.onlyActive) query = query.eq("is_active", true);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("Error al leer servicios de Supabase, usando store local:", error.message);
+    return getStoredServices(options.onlyActive);
+  }
+  return (data as Service[]) ?? [];
+}
+
+/* ---------------------------------------------------------------------
+   PRÓXIMA CITA DEL CLIENTE
+   --------------------------------------------------------------------- */
+export async function getNextAppointment(clientId: string): Promise<AppointmentWithDetails | null> {
+  if (!isSupabaseConfigured()) {
+    return getClientNextAppointment(clientId);
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("appointments")
+    .select(APPOINTMENT_SELECT)
+    .eq("client_id", clientId)
+    .gte("date", toISODate(new Date()))
+    .in("status", ["pendiente", "confirmada"])
+    .order("date")
+    .order("time")
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error al leer la próxima cita en Supabase:", error.message);
+    return getClientNextAppointment(clientId);
+  }
+  return data ? mapAppointment(data as unknown as AppointmentRow) : null;
+}
+
+/* ---------------------------------------------------------------------
+   CITAS DEL DÍA (panel de administración)
+   --------------------------------------------------------------------- */
+export async function getAppointmentsByDate(date: string): Promise<AppointmentWithDetails[]> {
+  if (!isSupabaseConfigured()) {
+    return getStoredAppointments(date);
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("appointments")
+    .select(APPOINTMENT_SELECT)
+    .eq("date", date)
+    .neq("status", "cancelada")
+    .order("time");
+
+  if (error) {
+    console.error("Error al leer citas en Supabase:", error.message);
+    return getStoredAppointments(date);
+  }
+  return ((data as unknown as AppointmentRow[]) ?? []).map(mapAppointment);
+}
+
+/* ---------------------------------------------------------------------
+   HORARIO DE ATENCIÓN
+   --------------------------------------------------------------------- */
+export async function getBusinessHours(): Promise<BusinessHours> {
+  if (!isSupabaseConfigured()) {
+    return getStoredBusinessHours();
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("business_hours").select("*").eq("id", 1).maybeSingle();
+  if (error || !data) {
+    return getStoredBusinessHours();
+  }
+
+  return {
+    ...(data as BusinessHours),
+    open_time: String(data.open_time).slice(0, 5),
+    close_time: String(data.close_time).slice(0, 5),
+    break_start: data.break_start ? String(data.break_start).slice(0, 5) : null,
+    break_end: data.break_end ? String(data.break_end).slice(0, 5) : null,
+  };
+}
+
+/* ---------------------------------------------------------------------
+   USUARIOS
+   --------------------------------------------------------------------- */
+export async function getProfilesPage(
+  page: number,
+  pageSize: number
+): Promise<{ rows: Profile[]; total: number }> {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  if (!isSupabaseConfigured()) {
+    const all = getAllUsers();
+    return { rows: all.slice(from, to + 1), total: all.length };
+  }
+
+  const supabase = await createClient();
+  const { data, count, error } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact" })
+    .order("role", { ascending: true })
+    .order("first_name")
+    .range(from, to);
+
+  if (error) {
+    const all = getAllUsers();
+    return { rows: all.slice(from, to + 1), total: all.length };
+  }
+  return { rows: (data as Profile[]) ?? [], total: count ?? 0 };
+}
+
+export async function getClientCount(): Promise<number> {
+  if (!isSupabaseConfigured()) {
+    return getAllUsers().filter((u) => u.role === "cliente").length;
+  }
+
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .eq("role", "cliente");
+
+  if (error) {
+    return getAllUsers().filter((u) => u.role === "cliente").length;
+  }
+  return count ?? 0;
+}

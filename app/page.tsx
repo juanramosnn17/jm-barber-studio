@@ -34,33 +34,14 @@ export default async function HomePage() {
         </div>
       </header>
 
-      {/* Hero Section */}
       <main className="w-full pt-28 pb-space-xl flex-1 flex flex-col items-center">
         <div className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-tablet lg:px-margin text-center flex flex-col items-center gap-space-lg">
-        
-
-          {/* Título Principal */}
-          <p className="font-body-lg text-on-surface-variant max-w-2xl text-center">
-            Experimenta una sesión de barbería exclusiva en un ambiente diseñado para tu comodidad y distinción. Reserva tu turno en segundos.
-          </p>
-
-          {/* Botones de Acción */}
-          {/* EDITAR AQUÍ: Enlaces de llamada a la acción */}
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-            <Link
-              href="/login?return_url=/cliente%23booking-flow"
-              className="px-8 py-3.5 rounded-full bg-primary text-on-primary font-label-lg hover:bg-neutral-800 shadow-md flex items-center gap-2 group transition-all"
-            >
-              <span>Reservar mi turno</span>
-              <span className="material-symbols-outlined text-[20px] text-secondary-fixed transition-transform group-hover:translate-x-1">
-                arrow_forward
-              </span>
-            </Link>
-            {/* Sin botón al panel administrativo: el staff entra con "Iniciar sesión" (spec F1) */}
-          </div>
+          {/* Título solo para lectores de pantalla. Para reservar: "Reservar Cita" arriba,
+              "Ver agenda" o el botón "Reservar" de cada servicio (spec F1). */}
+          <h1 className="sr-only">JM Barber Studio</h1>
 
           {/* Catálogo Visual de Servicios */}
-          <div className="w-full mt-space-xl text-left">
+          <div className="w-full text-left">
             <div className="flex items-center justify-between mb-space-md border-b border-surface-container-high/60 pb-2">
               <div>
                 <span className="font-label-sm uppercase tracking-widest text-secondary font-bold">

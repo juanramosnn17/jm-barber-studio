@@ -24,7 +24,7 @@
 > Regla: una tarea a la vez; al terminar cada una se verifican en el navegador los criterios marcados **[Back]** en `docs/specs/` y se marca aquí. Se puede apoyar en el conector MCP de Supabase. El contrato de cada operación está en `docs/contratos/api.md`.
 > Orden de ejecución por prioridad (detalle en `GUIA_BACKEND.md`): 3.10 → 3.1 → 3.2 → 3.3 → 3.7 → 3.4/3.5/3.6 → 3.12 → 3.13 → 3.11 → 3.8 → 3.9 → 3.14.
 
-- [ ] 3.1 Crear el proyecto en Supabase (región `sa-east-1` São Paulo) y anotar URL y anon key en `.env.local` (nunca en el código).
+- [x] 3.1 Proyecto Supabase listo: se reactivó el proyecto existente "Barberia JM" (`rlptxllgviigshgoihyh`, región `us-west-2`). La URL y la anon key van en `.env.local` (nunca en el código) en el paso 4.
 - [ ] 3.2 Ejecutar `supabase/schema.sql` en el proyecto y comprobar en el Table Editor las 5 tablas (`profiles`, `services`, `business_hours`, `appointments`, `expenses`) con RLS activo y los datos semilla de servicios y horario.
 - [ ] 3.3 Configurar Supabase Auth: proveedor correo/contraseña activo, confirmación de correo desactivada para el MVP y `Site URL` = `https://jm-barber-studio-delta.vercel.app` (más `http://localhost:3000` en Redirect URLs).
 - [ ] 3.4 Actualizar la spec F2 y luego `supabase/schema.sql`: índice único parcial en `appointments (date, time)` donde `status <> 'cancelada'`, para que la base de datos impida el overbooking.

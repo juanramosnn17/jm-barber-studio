@@ -18,7 +18,7 @@ Pasos ordenados **de lo más importante a lo menos importante**. Haz uno a la ve
 
 ### Paso 2 · Crear el proyecto en Supabase · tarea 3.1
 - **Por qué:** es la base de datos y el login reales.
-- **Qué se hace:** crear el proyecto `jm-barber-studio` en la región `sa-east-1` (São Paulo), plan gratuito.
+- **Qué se hace:** crear el proyecto `jm-barber-studio` en la región `sa-east-1` (São Paulo), plan gratuito. **Hecho:** se reactivó el proyecto existente "Barberia JM" (`us-west-2`).
 - **Quién:** el agente con el conector MCP de Supabase, **con tu aprobación del costo ($0 en plan gratis)**.
 - **Listo cuando:** el proyecto aparece "Active" en supabase.com.
 

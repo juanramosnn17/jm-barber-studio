@@ -8,7 +8,17 @@ Como administrador del estudio, quiero gestionar el catálogo de servicios, conf
 2. **Servicios (`/admin/servicios`):** El componente `ServicesManager` lista todos los servicios del catálogo con un interruptor para activarlos o desactivarlos (`toggleServiceActiveAction`) y un formulario para crear un nuevo servicio (`createServiceAction`) con nombre, nombre corto, precio, duración, descripción, qué incluye e imagen.
 3. **Usuarios (`/admin/usuarios`):** El componente `UsersTable` muestra la tabla paginada de usuarios registrados con filtro por rol y buscador, permitiendo editar sus datos y rol (`cliente`, `barbero`, `admin`) mediante `updateUserAction` o eliminarlos con `deleteUserAction`.
 
+### Permisos por rol
+| Sección | admin | barbero |
+|---|---|---|
+| `/admin` (agenda y estados de citas) | ✅ | ✅ |
+| `/admin/servicios`, `/admin/horarios`, `/admin/usuarios` | ✅ | ❌ no aparecen en su menú; si entra por la URL vuelve a `/admin` |
+| `/admin/contabilidad/ganancias` | ✅ | ❌ |
+| Datos de clientes | todos | solo **nombre y apellido** de los clientes en la agenda (sin correo ni teléfono) |
+
 ## Criterios de aceptación
+- [ ] Un usuario `barbero` no ve "Servicios", "Horarios", "Usuarios" ni "Contabilidad" en el menú lateral, y si abre esas URLs es redirigido a `/admin`.
+- [ ] Un usuario `barbero` ve en la agenda de `/admin` el nombre de cada cliente, pero no puede consultar su correo ni su teléfono.
 - [ ] En `/admin/horarios`, al desactivar un día de la semana o modificar la hora de apertura/cierre y guardar, el calendario y los turnos ofrecidos en `/cliente` reflejan el nuevo horario inmediatamente.
 - [ ] En `/admin/servicios`, al desactivar un servicio con su interruptor, dicho servicio deja de mostrarse en la portada pública (`/`) y en el selector de reservas de `/cliente`.
 - [ ] En `/admin/servicios`, al crear un servicio nuevo con nombre y precio válido, este aparece en el listado administrativo y queda disponible para reservar en `/cliente`.

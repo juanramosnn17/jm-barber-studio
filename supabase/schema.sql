@@ -47,10 +47,28 @@ as $$
 $$;
 
 -- Políticas de profiles
+-- El barbero NO lee profiles (correos y teléfonos); para la agenda usa
+-- get_client_names(), que devuelve solo nombre y apellido. Tarea 3.21.
 drop policy if exists "Los usuarios pueden ver su propio perfil o administradores ver todos" on public.profiles;
 create policy "Los usuarios pueden ver su propio perfil o administradores ver todos"
   on public.profiles for select
-  using (auth.uid() = id or public.get_my_role() in ('admin', 'barbero'));
+  using (auth.uid() = id or public.is_admin());
+
+create or replace function public.get_client_names(p_ids uuid[])
+returns table (id uuid, first_name text, last_name text)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select p.id, p.first_name, p.last_name
+  from public.profiles p
+  where p.id = any(p_ids)
+    and public.get_my_role() in ('admin', 'barbero');
+$$;
+
+revoke execute on function public.get_client_names(uuid[]) from public, anon;
+grant execute on function public.get_client_names(uuid[]) to authenticated;
 
 -- El usuario edita sus datos, pero no puede cambiar su propio rol:
 -- el rol nuevo debe ser igual al que ya tenía (get_my_role lee el valor previo).

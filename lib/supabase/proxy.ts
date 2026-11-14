@@ -105,10 +105,17 @@ export async function updateSession(request: NextRequest) {
     return redirectWithCookies(url, response);
   }
 
-  // Las rutas contables (/admin/contabilidad) son exclusivas para rol 'admin' (barberos redirigidos a /admin)
+  // Contabilidad, servicios, horarios y usuarios son exclusivos del rol 'admin'
+  // (barberos redirigidos a /admin). Spec F4 "Permisos por rol", tarea 3.21.
+  const ADMIN_ONLY_PREFIXES = [
+    "/admin/contabilidad",
+    "/admin/servicios",
+    "/admin/horarios",
+    "/admin/usuarios",
+  ];
   if (
     isLoggedIn &&
-    path.startsWith("/admin/contabilidad") &&
+    ADMIN_ONLY_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`)) &&
     userRole !== "admin"
   ) {
     const url = request.nextUrl.clone();

@@ -171,7 +171,31 @@ export async function getAppointmentsByDate(date: string): Promise<AppointmentWi
     return [];
   }
 
-  return ((data as unknown as AppointmentRow[]) ?? []).map(mapAppointment);
+  const rows = (data as unknown as AppointmentRow[]) ?? [];
+
+  // El barbero no lee profiles (RLS): los nombres llegan vacíos y se completan
+  // con get_client_names, que solo devuelve nombre y apellido. Tarea 3.21.
+  const missingIds = Array.from(new Set(rows.filter((r) => !r.client).map((r) => r.client_id)));
+  if (missingIds.length > 0) {
+    const { data: names, error: namesError } = await supabase.rpc("get_client_names", {
+      p_ids: missingIds,
+    });
+    if (namesError) {
+      console.error("Error al leer nombres de clientes en Supabase:", namesError.message);
+    } else {
+      const byId = new Map(
+        ((names as { id: string; first_name: string; last_name: string }[]) ?? []).map((n) => [
+          n.id,
+          { first_name: n.first_name, last_name: n.last_name },
+        ])
+      );
+      for (const r of rows) {
+        if (!r.client) r.client = byId.get(r.client_id) ?? null;
+      }
+    }
+  }
+
+  return rows.map(mapAppointment);
 }
 
 /**

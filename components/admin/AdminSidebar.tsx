@@ -8,13 +8,14 @@ interface AdminSidebarProps {
 }
 
 export default function AdminSidebar({ currentPath, adminUser }: AdminSidebarProps) {
+  // El barbero solo ve la agenda; el resto es exclusivo del admin (spec F4, tarea 3.21)
   const navItems = [
     { label: "Citas", icon: "calendar_today", href: "/admin" },
-    { label: "Servicios", icon: "spa", href: "/admin/servicios" },
-    { label: "Horarios", icon: "schedule", href: "/admin/horarios" },
-    { label: "Usuarios", icon: "group", href: "/admin/usuarios" },
     ...(adminUser?.role === "admin"
       ? [
+          { label: "Servicios", icon: "spa", href: "/admin/servicios" },
+          { label: "Horarios", icon: "schedule", href: "/admin/horarios" },
+          { label: "Usuarios", icon: "group", href: "/admin/usuarios" },
           {
             label: "Contabilidad",
             icon: "monitoring",

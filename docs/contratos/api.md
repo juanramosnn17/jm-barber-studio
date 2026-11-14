@@ -36,7 +36,7 @@ Regla de negocio (spec F2): **una sola cita no cancelada por `(date, time)`**, g
 | `getCurrentProfile` | `demoRoleFallback?` | `Profile \| null` | `profiles` | cualquiera con sesión |
 | `getServices` | `{ onlyActive?: boolean }` | `Service[]` ordenados por `sort_order` | `services` | público (activos); admin (todos) |
 | `getNextAppointment` | `clientId` | `AppointmentWithDetails \| null` | `appointments` + `services` | el propio cliente |
-| `getAppointmentsByDate` | `date` | `AppointmentWithDetails[]` ordenadas por hora | `appointments` + `services` + `profiles` | admin, barbero |
+| `getAppointmentsByDate` | `date` | `AppointmentWithDetails[]` ordenadas por hora | `appointments` + `services` + `profiles` (admin) o **RPC `get_client_names(ids)`** (barbero, solo nombre y apellido) | admin, barbero |
 | `getBookedSlotsByDate` | `date` | `string[]` horas `HH:MM` ocupadas | **RPC `get_booked_slots(date)`** (tarea 3.5) | cualquier cliente con sesión |
 | `getBusinessHours` | — | `BusinessHours` | `business_hours` (id 1) | público |
 | `getProfilesPage` | `page`, `pageSize` | `{ rows: Profile[]; total }` | `profiles` | admin |
@@ -77,3 +77,4 @@ Códigos de error: `400` filtros inválidos · `401` sin sesión · `403` rol di
 |---|---|---|---|
 | `is_admin()` / `get_my_role()` | `security definer`, `stable` | Leer el rol del usuario sin activar RLS de `profiles` (evita recursión infinita, error `42P17`) | 3.10 |
 | `get_booked_slots(date)` | `security definer` | Devolver solo las horas ocupadas de una fecha, sin datos personales | 3.5 |
+| `get_client_names(uuid[])` | `security definer`, solo admin/barbero | Devolver `id`, `first_name`, `last_name` de los clientes pedidos, sin correo ni teléfono (el barbero ya no lee `profiles`) | 3.21 |

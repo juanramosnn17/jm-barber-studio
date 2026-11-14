@@ -76,17 +76,8 @@ export default async function AdminProfitReportPage({
             />
 
             <div className="flex-1 w-full min-w-0 flex flex-col gap-6">
-              {/* Encabezado del módulo contable */}
-              <header className="bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-surface-container-high/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h1 className="font-headline-md text-on-surface font-bold">
-                    Contabilidad
-                  </h1>
-                  <p className="font-body-sm text-on-surface-variant mt-1">
-                    Lo que entró, lo que salió y lo que te queda.
-                  </p>
-                </div>
-              </header>
+              {/* Título solo para lectores de pantalla (sin sección visible) */}
+              <h1 className="sr-only">Contabilidad</h1>
 
               {/* Estado de error controlado cuando los parámetros de consulta son inválidos */}
               {!reportResponse.success ? (

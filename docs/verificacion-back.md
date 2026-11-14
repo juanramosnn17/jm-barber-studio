@@ -16,11 +16,11 @@ Leyenda: ✅ cumple · ❌ no cumple · ⏳ pendiente.
 |---|---|---|---|---|
 | 1 | F1 | Registro crea usuario en Auth y perfil `cliente` | Registrar en `/registro`; revisar la base | ✅ `juanramosnn7@gmail.com` se registró en producción y quedó en Auth + `profiles` como `cliente` |
 | 2 | F1 | La cuenta inicia sesión desde otro navegador | A entra en incógnito con su correo | ✅ la cuenta admin se registró en el panel del navegador integrado y el estudiante inició sesión con ella desde su Chrome normal |
-| 3 | F1 | `/` carga sin errores sin sesión y con cada rol | `curl` sin sesión + visitar con admin, cliente y barbero | ⏳ (sin sesión: ✅ 200, 6 servicios) |
+| 3 | F1 | `/` carga sin errores sin sesión y con cada rol | `curl` sin sesión + visitar con admin, cliente y barbero | ✅ sin sesión (200, catálogo completo) y, según el estudiante, con sesión de admin y de cliente |
 | 4 | F1 | Admin promovido entra a `/admin`; cookie falsa no da acceso | `curl` con `jm_user_session=user-admin` | ✅ cookie falsa → `/login`; la cuenta promovida a `admin` por SQL entró a `/admin` en producción sin volver a iniciar sesión |
 | 5 | F1 | Servicio desactivado desaparece de `/` | Admin apaga un servicio en `/admin/servicios`; recargar `/` | ✅ el admin apagó "Arreglo de cejas" y la portada pública dejó de mostrarlo (5 de 6 servicios) |
-| 6 | F2 | La cita sigue en "Próxima cita" desde otro navegador | A reserva; entra en incógnito | ⏳ |
-| 7 | F2 | El turno de A no aparece disponible para B | B abre la misma fecha | ⏳ |
+| 6 | F2 | La cita sigue en "Próxima cita" desde otro navegador | A reserva; entra en incógnito | ✅ la cita del cliente A (lunes 16, 9:30 AM) aparece en "Próxima cita" al entrar desde otro navegador |
+| 7 | F2 | El turno de A no aparece disponible para B | B abre la misma fecha | ✅ con otra cuenta, las 9:30 AM del lunes 16 no aparecen como disponibles |
 | 8 | F2 | Dos clientes al mismo turno: solo uno queda | Probado en la base (error 23505) en el paso 6 | ✅ (base) |
 | 9 | F2 | Un cliente no ve citas de otro | B revisa `/cliente` | ✅ el cliente B no vio citas de otros en `/cliente` (confirmado por el estudiante; RLS probado en el paso 6) |
 | 10 | F3 | La cita de A aparece en `/admin` del admin | Admin abre `/admin` el día de la cita | ✅ el barbero ve en `/admin` las 3 citas de hoy con el nombre de cada cliente |

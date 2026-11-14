@@ -110,16 +110,19 @@ export default function AppHeader({ user, currentRole = "cliente" }: AppHeaderPr
                     <p className="font-body-sm text-on-surface-variant truncate">{user?.email}</p>
                   </div>
 
-                  <Link
-                    href={homeHref}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-on-surface hover:bg-surface-container font-label-md transition-colors"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    <span className="material-symbols-outlined text-[18px] text-secondary">
-                      dashboard
-                    </span>
-                    <span>Panel Principal</span>
-                  </Link>
+                  {/* "Panel Principal" solo para admin y barbero (spec F1) */}
+                  {isStaff && (
+                    <Link
+                      href={homeHref}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-on-surface hover:bg-surface-container font-label-md transition-colors"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      <span className="material-symbols-outlined text-[18px] text-secondary">
+                        dashboard
+                      </span>
+                      <span>Panel Principal</span>
+                    </Link>
+                  )}
 
                   <form action={logoutAction}>
                     <button

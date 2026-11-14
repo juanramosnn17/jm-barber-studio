@@ -56,12 +56,7 @@ export default async function HomePage() {
                 arrow_forward
               </span>
             </Link>
-            <Link
-              href="/login?return_url=/admin"
-              className="px-6 py-3.5 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high font-label-lg border border-surface-container-high transition-all"
-            >
-              Panel Administrativo
-            </Link>
+            {/* Sin botón al panel administrativo: el staff entra con "Iniciar sesión" (spec F1) */}
           </div>
 
           {/* Catálogo Visual de Servicios */}

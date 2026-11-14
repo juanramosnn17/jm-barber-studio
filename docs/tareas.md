@@ -16,7 +16,7 @@
 
 - [x] 2.1 Definir esquema SQL en `supabase/schema.sql` (tablas `profiles`, `services`, `business_hours`, `appointments`, `expenses`, políticas RLS, trigger `handle_new_user` y datos semilla).
 - [x] 2.2 Implementar almacén reactivo en memoria (`lib/data/store.ts`) y gestión de sesión por cookies (`lib/auth/session.ts`) para soporte híbrido Demo + Supabase.
-- [x] 2.3 Implementar clientes de Supabase (`lib/supabase/client.ts`, `server.ts`, `env.ts`) y middleware de protección de rutas por rol (`middleware.ts` y `lib/supabase/proxy.ts`).
+- [x] 2.3 Implementar clientes de Supabase (`server.ts`, `env.ts` (el cliente de navegador `client.ts` se eliminó por no usarse)) y middleware de protección de rutas por rol (`middleware.ts` y `lib/supabase/proxy.ts`).
 - [x] 2.4 Implementar capa de lecturas del servidor (`lib/data/queries.ts`) y Server Actions de mutación (`lib/actions.ts`) con prevención de overbooking y `revalidatePath`.
 - [x] 2.5 Implementar motor financiero (`lib/accounting/profit-report.*.ts`), endpoint de exportación CSV (`app/api/accounting/profit-report/route.ts`) y pruebas unitarias (`tests/accounting/profit-report.test.ts`).
 

@@ -70,9 +70,6 @@ export default function ScheduleConfig({ initialHours }: ScheduleConfigProps) {
               Configuración de turnos semanales y pausas técnicas
             </p>
           </div>
-          <span className="px-2.5 py-1 rounded-full bg-surface-container font-label-sm text-on-surface">
-            {initialHours.barbers_count} barberos
-          </span>
         </div>
 
         {/* Días de apertura */}
@@ -166,14 +163,6 @@ export default function ScheduleConfig({ initialHours }: ScheduleConfigProps) {
               ? "Guardando cambios..."
               : "Guardar Horarios"}
           </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => alert("Excepción añadida al calendario.")}
-          className="w-full sm:w-auto h-11 px-4 rounded-xl bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors font-label-md flex items-center justify-center gap-1.5 shrink-0"
-        >
-          <span className="material-symbols-outlined text-[18px]">lock_clock</span>
-          <span>Añadir Excepción</span>
         </button>
       </div>
     </div>

@@ -46,8 +46,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         {/* Fuente de iconos de Google (Material Symbols).
             Se carga como hoja de estilos porque es una fuente de iconos
-            variable que next/font no puede recortar por glifos. */}
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+            variable que next/font no puede recortar por glifos.
+            display=block es intencional: evita que se vea el nombre del ícono
+            como texto mientras la fuente carga. */}
+        {/* eslint-disable-next-line @next/next/no-page-custom-font, @next/next/google-font-display */}
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"

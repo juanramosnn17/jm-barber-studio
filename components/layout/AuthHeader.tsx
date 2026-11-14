@@ -1,6 +1,5 @@
 import Link from "next/link";
 import BrandLogo from "@/components/ui/BrandLogo";
-import { siteConfig } from "@/lib/config";
 
 interface AuthHeaderProps {
   rightText?: string;

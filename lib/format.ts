@@ -53,13 +53,6 @@ export function formatFullDate(iso: string): string {
   });
 }
 
-/** Date → "Octubre 2025" (título del calendario) */
-export function formatMonthYear(date: Date): string {
-  return capitalize(
-    date.toLocaleDateString("es-CO", { month: "long", year: "numeric" }),
-  );
-}
-
 /** "16:00" → { time: "04:00", period: "PM" } (para los bloques de hora) */
 export function splitTime12h(time24: string): { time: string; period: "AM" | "PM" } {
   const [h, m] = time24.split(":").map(Number);

@@ -22,9 +22,9 @@ Como administrador exclusivo del estudio, quiero consultar el reporte financiero
 ## Comportamiento
 1. La ruta `/admin/contabilidad/ganancias` verifica en el servidor que el usuario tenga rol estricto `admin` (si es `barbero` lo redirige a `/admin` y si es `cliente` a `/cliente`).
 2. En la parte superior incluye un formulario desplegable/modal que invoca `createExpenseAction` para registrar nuevos **gastos operativos** (fecha, categoría como arriendo, servicios públicos, nómina, insumos, publicidad, mantenimiento u otros, concepto, monto en COP, método de pago y referencia).
-3. El componente `ProfitReportFilters` permite filtrar el reporte por periodos rápidos (`today`, `7d`, `30d`, `month`, `custom`), rango de fechas (`startDate`, `endDate`), barbero, servicio, método de pago, estado de pago y categoría de gasto.
-4. El motor contable (`lib/accounting/`) calcula y muestra en `ProfitSummaryCards`: Ingresos Netos, Costos Directos + Comisiones, Ganancia Bruta, Gastos Operativos y **Ganancia Neta** (con porcentaje de variación frente al periodo anterior equivalente).
-5. Muestra visualizaciones en `ProfitTrendChart` (evolución temporal), `RevenueBreakdownChart` (ingresos por servicio, barbero y medio de pago) y `ExpenseBreakdownChart` (gastos por categoría), seguidas por la tabla paginada `AccountingTransactionsTable` y el botón de descarga CSV (`/api/accounting/profit-report?format=csv`).
+3. El componente `ProfitReportFilters` permite elegir el periodo (Hoy, Esta semana, Mes actual, Mes anterior) o un rango de fechas (`startDate`, `endDate`). Sin filtros de barbero, servicio, método, estado ni categoría (tarea 3.28).
+4. El motor contable (`lib/accounting/`) calcula y `ProfitSummaryCards` muestra 5 tarjetas: Ingresos, Tu ganancia, Reserva del negocio, Gastos y Saldo de la reserva (ver "Modelo contable de la barbería").
+5. Debajo, la tabla paginada `AccountingTransactionsTable` (citas cobradas y gastos) y el botón de descarga CSV (`/api/accounting/profit-report?format=csv`). Las gráficas se eliminaron (tarea 3.28).
 6. **Ajustes contables (solo admin):** al abrir un movimiento en la tabla se muestra su "Comprobante Auditable" con acciones según el tipo:
    - **Gasto registrado:** *Editar* (fecha, categoría, concepto, monto, método de pago y referencia), *Anular* (con motivo obligatorio) y *Eliminar*.
    - **Gasto anulado:** muestra el motivo y la fecha de anulación; solo permite *Eliminar*.

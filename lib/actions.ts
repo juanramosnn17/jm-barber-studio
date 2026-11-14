@@ -37,7 +37,6 @@ import {
   getStoredAppointments,
   registerNewUser,
   toggleStoredServiceActive,
-  updateStoredAppointmentAssignment,
   updateStoredAppointmentStatus,
   updateStoredBusinessHours,
   getStoredServices,
@@ -160,7 +159,6 @@ export async function registerAction(
   const phone = formData.get("phone") as string;
   const password = formData.get("password") as string;
   const confirmPassword = formData.get("confirm_password") as string;
-  const reminders = formData.get("reminders") === "on";
 
   if (!firstName || !email || !password) {
     return { ok: false, message: "Por favor completa todos los campos obligatorios." };
@@ -181,7 +179,6 @@ export async function registerAction(
           first_name: firstName,
           last_name: lastName || "",
           phone: phone ? `+57 ${phone.trim()}` : null,
-          reminders_opt_in: reminders,
         },
       },
     });
@@ -210,7 +207,6 @@ export async function registerAction(
       phone: phone ? `+57 ${phone.trim()}` : null,
       password,
       role: "cliente",
-      reminders_opt_in: reminders,
     });
 
     await setSessionUser(newUser.id);
@@ -400,40 +396,6 @@ export async function updateAppointmentStatusAction(
   revalidatePath("/admin/contabilidad/ganancias");
   revalidatePath("/cliente");
   return { ok: true };
-}
-
-/**
- * Asignar barbero y sillón a una cita desde el panel de Administración
- */
-export async function assignAppointmentBarberAction(
-  appointmentId: string,
-  barberName: string,
-  chair: string
-): Promise<ActionResult> {
-  if (!(await requireRole(["admin", "barbero"]))) {
-    return { ok: false, message: FORBIDDEN_MESSAGE };
-  }
-
-  const cleanBarber = barberName.trim() || "Pendiente de asignación";
-  const cleanChair = chair.trim() || "No asignado";
-
-  if (isSupabaseConfigured()) {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("appointments")
-      .update({ barber_name: cleanBarber, chair: cleanChair })
-      .eq("id", appointmentId)
-      .select("id");
-    if (error || !data?.length) {
-      return supabaseFailure("Error asignando barbero en Supabase", error?.message);
-    }
-  } else {
-    updateStoredAppointmentAssignment(appointmentId, cleanBarber, cleanChair);
-  }
-
-  revalidatePath("/admin");
-  revalidatePath("/cliente");
-  return { ok: true, message: "Barbero y sillón asignados correctamente." };
 }
 
 /**

@@ -46,11 +46,10 @@ Regla de negocio (spec F2): **una sola cita no cancelada por `(date, time)`**, g
 | Acción | Entrada | Efecto | Errores esperados (mensaje) | Rol |
 |---|---|---|---|---|
 | `loginAction` | FormData: `identifier`, `password`, `return_url?` | Inicia sesión y redirige a `/admin` o `/cliente` | `"Credenciales incorrectas. Verifica tu correo y contraseña o regístrate si aún no tienes cuenta."` | público |
-| `registerAction` | FormData: `first_name`, `last_name`, `email`, `phone`, `password`, `confirm_password`, `reminders?` | Crea usuario en Auth + `profiles` (`role = 'cliente'`) y abre sesión | `"Las contraseñas no coinciden."` | público |
+| `registerAction` | FormData: `first_name`, `last_name`, `email`, `phone`, `password`, `confirm_password`, `terms` (autorización de datos) | Crea usuario en Auth + `profiles` (`role = 'cliente'`) y abre sesión | `"Las contraseñas no coinciden."` | público |
 | `logoutAction` | — | Cierra sesión y redirige a `/login` | — | con sesión |
 | `createAppointmentAction` | `serviceId`, `date`, `time`, `notes?` | Inserta cita `confirmada` → `{ ok, message?, appointmentId? }` | `"Faltan datos requeridos de la reserva."` · `"Este bloque horario ya está ocupado. Por favor elige otro turno."` (también ante error Postgres `23505`) · `"Debes iniciar sesión para reservar."` | cualquier usuario con sesión (la cita queda a su nombre) |
 | `updateAppointmentStatusAction` | `appointmentId`, `newStatus: AppointmentStatus` | Cambia estado; si es `completada` registra `payment_status = 'pagado'`, costo directo y comisión | `"No tienes permisos para realizar esta acción."` | admin, barbero: cualquier estado · cliente: solo `cancelada` en sus propias citas |
-| `assignAppointmentBarberAction` | `appointmentId`, `barberName`, `chair` | Asigna barbero y sillón (**sin pantalla en el MVP**: un solo barbero, tarea 3.17 pospuesta) | — | admin, barbero |
 | `updateBusinessHoursAction` | `Partial<BusinessHours>` | Actualiza la fila `id = 1` | — | admin |
 | `toggleServiceActiveAction` | `serviceId` | Invierte `is_active` | — | admin |
 | `createServiceAction` | FormData: `name`, `short_name`, `description`, `includes`, `price`, `duration_label`, `duration_minutes`, `icon`, `image_url`, `custom_image_url` | Inserta servicio activo | — | admin |

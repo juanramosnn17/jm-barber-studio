@@ -6,7 +6,7 @@ Como visitante de JM Barber Studio, quiero explorar el catálogo de servicios co
 ## Comportamiento
 1. En la página principal (`/`), el usuario visualiza la barra superior con acceso a **Iniciar sesión** (`/login`) y **Reservar Cita** (`/registro`), el botón de llamada a la acción **Reservar mi turno** y la cuadrícula de hasta 6 servicios activos con foto, nombre, precio en COP, descripción y duración.
 2. Al hacer clic en cualquier tarjeta de servicio o en **Reservar**, el sistema redirige a `/login` conservando en la URL el destino (`/cliente#booking-flow`) y el `serviceId` seleccionado.
-3. En `/login`, el usuario ingresa su correo o teléfono y su contraseña; el Server Action `loginAction` valida las credenciales y redirige a `/admin` si el rol es `admin` o `barbero`, o a `/cliente` si es `cliente` (respetando `return_url` cuando aplica).
+3. En `/login`, el usuario ingresa su correo y su contraseña (Supabase Auth no inicia sesión con teléfono); el Server Action `loginAction` valida las credenciales y redirige a `/admin` si el rol es `admin` o `barbero`, o a `/cliente` si es `cliente` (respetando `return_url` cuando aplica).
 4. En `/registro`, el cliente completa nombre, apellido, correo, teléfono (+57), contraseña y confirmación; al enviarlo, `registerAction` crea la cuenta, inicia sesión automáticamente y redirige a `/cliente`.
 5. El middleware (`lib/supabase/proxy.ts`) bloquea el acceso sin sesión a `/cliente` y `/admin` redirigiendo a `/login`, e impide que un usuario con rol `cliente` entre a rutas bajo `/admin`.
 

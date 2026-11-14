@@ -591,9 +591,6 @@ export function getMockNextAppointment(): AppointmentWithDetails {
   };
 }
 
-/** Horas ya ocupadas (demo): se simulan algunas para que se vean deshabilitadas. */
-export const mockBookedSlots = ["10:00", "12:30", "18:00"];
-
 /* ---------------------------------------------------------------------
    HORARIO DE ATENCIÓN (demo)
    --------------------------------------------------------------------- */

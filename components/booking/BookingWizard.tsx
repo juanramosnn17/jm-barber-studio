@@ -32,8 +32,10 @@ export default function BookingWizard({
   // Fecha seleccionada (por defecto hoy)
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [bookedSlots, setBookedSlots] = useState<string[]>(initialBookedSlots);
-  const [isLoadingSlots, setIsLoadingSlots] = useState<boolean>(false);
-  const [selectedSlot, setSelectedSlot] = useState<string>("");
+  // Fecha cuyas horas ocupadas ya se cargaron (la carga se deduce de esto, sin setState en el efecto)
+  const [slotsLoadedFor, setSlotsLoadedFor] = useState<string | null>(null);
+  // Horario que el cliente tocó; el horario efectivo se calcula más abajo
+  const [pickedSlot, setPickedSlot] = useState<string>("");
   const [statusMessage, setStatusMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [confirmedBooking, setConfirmedBooking] = useState<{
     id: string;
@@ -51,19 +53,17 @@ export default function BookingWizard({
   // para evitar overbooking. Con Supabase usa get_booked_slots (tarea 3.6).
   useEffect(() => {
     let active = true;
-    setIsLoadingSlots(true);
 
     getBookedSlotsByDate(selectedDateISO)
       .then((occupied) => {
         if (!active) return;
         setBookedSlots(occupied);
+        setSlotsLoadedFor(selectedDateISO);
       })
       .catch(() => {
         if (!active) return;
         setBookedSlots([]);
-      })
-      .finally(() => {
-        if (active) setIsLoadingSlots(false);
+        setSlotsLoadedFor(selectedDateISO);
       });
 
     return () => {
@@ -71,18 +71,16 @@ export default function BookingWizard({
     };
   }, [selectedDateISO]);
 
+  const isLoadingSlots = slotsLoadedFor !== selectedDateISO;
+
   // Generar turnos para el día seleccionado excluyendo las horas ya reservadas
   const availableSlots = generateDailySlots(businessHours, bookedSlots, selectedDateISO);
   const isOpen = isOpenOn(selectedDate, businessHours);
 
-  // Mantener un horario válido seleccionado cuando cambian los bloques disponibles
-  useEffect(() => {
-    if (availableSlots.length === 0) {
-      setSelectedSlot("");
-    } else if (!selectedSlot || !availableSlots.includes(selectedSlot)) {
-      setSelectedSlot(availableSlots[0]);
-    }
-  }, [availableSlots, selectedSlot]);
+  // Horario efectivo: el que tocó el cliente si sigue disponible; si no, el primero libre
+  const selectedSlot = availableSlots.includes(pickedSlot)
+    ? pickedSlot
+    : (availableSlots[0] ?? "");
 
   // Generar días del mes actual para el calendario interactivo
   const currentYear = selectedDate.getFullYear();
@@ -423,7 +421,7 @@ export default function BookingWizard({
                     <button
                       key={slot}
                       type="button"
-                      onClick={() => setSelectedSlot(slot)}
+                      onClick={() => setPickedSlot(slot)}
                       className={`py-2.5 px-3 rounded-xl font-label-md text-center transition-all border ${
                         isSelected
                           ? "bg-primary text-on-primary shadow-sm flex items-center justify-center gap-1.5 ring-2 ring-secondary font-semibold border-primary"
@@ -487,9 +485,6 @@ export default function BookingWizard({
             >
               {isPending ? "Confirmando..." : "Confirmar reserva"}
             </button>
-            <span className="font-label-sm text-on-surface-variant text-center">
-              Recibirás un recordatorio vía Correo / WhatsApp
-            </span>
           </div>
         </div>
       </div>

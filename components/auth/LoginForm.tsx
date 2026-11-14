@@ -8,29 +8,18 @@ import { loginAction } from "@/lib/actions";
 export default function LoginForm() {
   const [state, formAction, isPending] = useActionState(loginAction, null);
   const [showPassword, setShowPassword] = useState(false);
-  const [roleTab, setRoleTab] = useState<"cliente" | "staff">("cliente");
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("return_url") || searchParams.get("next") || "";
-
-  // EDITAR AQUÍ: Placeholders según la pestaña seleccionada
-  const placeholderText =
-    roleTab === "cliente" ? "cliente@jmbarber.com" : "director@jmbarberstudio.com";
-  const submitText =
-    roleTab === "cliente" ? "Acceder al Estudio" : "Acceder al Panel Master";
+  const submitText = "Acceder al Estudio";
 
   return (
     <div className="w-full max-w-[500px] mx-auto">
-      
-    
-
       {/* Tarjeta de Inicio de Sesión */}
       <div className="bg-surface-container-lowest rounded-3xl p-6 sm:p-10 shadow-[0_4px_28px_-4px_rgba(24,24,27,0.06),0_2px_8px_-1px_rgba(24,24,27,0.03)] relative overflow-hidden">
         <div className="flex flex-col items-center text-center mb-space-lg">
           <h1 className="font-headline-lg text-on-surface tracking-tight">Iniciar Sesión</h1>
           <p className="font-body-sm text-on-surface-variant mt-space-xs max-w-sm">
-            {roleTab === "cliente"
-              ? "Accede para gestionar tus citas y reservas en JM Barber."
-              : "Acceso exclusivo para barberos y administradores del estudio."}
+            Accede para gestionar tus citas y reservas en JM Barber.
           </p>
         </div>
 
@@ -45,10 +34,10 @@ export default function LoginForm() {
         <form action={formAction} className="flex flex-col gap-space-md">
           {/* Input Oculto para Redirección tras Login */}
           <input type="hidden" name="return_url" value={returnUrl} />
-          {/* Campo Correo o Teléfono */}
+          {/* Campo Correo (Supabase Auth inicia sesión con correo) */}
           <div className="flex flex-col gap-1.5 text-left">
             <label className="font-label-md text-on-surface flex items-center gap-1.5" htmlFor="identifier">
-              <span>Correo electrónico o teléfono</span>
+              <span>Correo electrónico</span>
             </label>
             <div className="relative flex items-center">
               <span className="material-symbols-outlined absolute left-4 text-on-surface-variant text-[20px] pointer-events-none select-none">
@@ -58,30 +47,19 @@ export default function LoginForm() {
                 className="w-full h-12 pl-12 pr-4 bg-surface-container-lowest rounded-xl font-body-md text-on-surface placeholder:text-outline-variant border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm transition-all"
                 id="identifier"
                 name="identifier"
-                placeholder={placeholderText}
+                placeholder="tucorreo@ejemplo.com"
+                autoComplete="email"
                 required
-                type="text"
+                type="email"
               />
             </div>
           </div>
 
           {/* Campo Contraseña */}
           <div className="flex flex-col gap-1.5 text-left">
-            <div className="flex items-center justify-between">
-              <label className="font-label-md text-on-surface flex items-center gap-1.5" htmlFor="password">
-                <span>Contraseña</span>
-              </label>
-              <a
-                href="#"
-                className="font-label-sm text-secondary hover:text-on-secondary-container transition-colors"
-                onClick={(e) => {
-                  e.preventDefault();
-                  alert("Recuperación de contraseña disponible con Supabase Auth.");
-                }}
-              >
-                ¿Olvidaste tu contraseña?
-              </a>
-            </div>
+            <label className="font-label-md text-on-surface flex items-center gap-1.5" htmlFor="password">
+              <span>Contraseña</span>
+            </label>
             <div className="relative flex items-center">
               <span className="material-symbols-outlined absolute left-4 text-on-surface-variant text-[20px] pointer-events-none select-none">
                 lock
@@ -105,19 +83,6 @@ export default function LoginForm() {
                 </span>
               </button>
             </div>
-          </div>
-
-          {/* Checkbox Recordar Sesión */}
-          <div className="flex items-center justify-between py-1">
-            <label className="flex items-center gap-2.5 cursor-pointer select-none">
-              <input className="sr-only peer" id="remember-me" name="remember" type="checkbox" />
-              <span className="w-4 h-4 rounded bg-surface-container-high peer-checked:bg-primary flex items-center justify-center transition-colors">
-                <span className="material-symbols-outlined text-[14px] text-on-primary opacity-0 peer-checked:opacity-100 font-bold">
-                  check
-                </span>
-              </span>
-              <span className="font-body-sm text-on-surface-variant">Recordar mi sesión</span>
-            </label>
           </div>
 
           {/* Botón de envío */}

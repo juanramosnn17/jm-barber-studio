@@ -53,18 +53,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                     Control de accesos y directorio de clientes y barberos
                   </p>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className="px-4 py-2 rounded-full bg-primary text-on-primary font-label-md flex items-center gap-1.5 shadow-sm hover:bg-neutral-800 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[18px] text-secondary-fixed">
-                      person_add
-                    </span>
-                    <span>Nuevo Usuario</span>
-                  </button>
-                </div>
+                {/* Sin "Nuevo Usuario": las cuentas se crean en /registro y el admin cambia el rol aquí */}
               </div>
 
               {/* Métricas rápidas */}

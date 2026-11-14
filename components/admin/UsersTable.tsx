@@ -12,7 +12,7 @@
    Todos los cambios actualizan el Store y Supabase en tiempo real.
    ===================================================================== */
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Profile, UserRole } from "@/lib/types";
@@ -39,14 +39,18 @@ export default function UsersTable({
   const [profiles, setProfiles] = useState<Profile[]>(initialProfiles);
   const [total, setTotal] = useState<number>(totalCount);
 
-  // Sincronizar el estado optimista local cuando cambia la página desde el servidor
-  useEffect(() => {
+  // Sincronizar el estado local cuando el servidor envía otra página o datos nuevos.
+  // Se hace durante el render (patrón recomendado por React) en lugar de en un efecto.
+  const [prevInitialProfiles, setPrevInitialProfiles] = useState(initialProfiles);
+  if (initialProfiles !== prevInitialProfiles) {
+    setPrevInitialProfiles(initialProfiles);
     setProfiles(initialProfiles);
-  }, [initialProfiles]);
-
-  useEffect(() => {
+  }
+  const [prevTotalCount, setPrevTotalCount] = useState(totalCount);
+  if (totalCount !== prevTotalCount) {
+    setPrevTotalCount(totalCount);
     setTotal(totalCount);
-  }, [totalCount]);
+  }
 
   // Estados para modal de edición
   const [editingUser, setEditingUser] = useState<Profile | null>(null);

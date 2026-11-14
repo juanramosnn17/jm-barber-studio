@@ -44,7 +44,6 @@ interface StoredUser extends Profile {
 
 // Estructura global en memoria (se mantiene entre recargas en el mismo proceso de servidor)
 declare global {
-  // eslint-disable-next-line no-var
   var __jm_store: {
     users: StoredUser[];
     services: Service[];
@@ -135,7 +134,12 @@ export function registerNewUser(data: {
 }
 
 export function getAllUsers(): Profile[] {
-  return store.users.map(({ password: _, ...p }) => p);
+  // Nunca devolver la contraseña del modo demo
+  return store.users.map((u) => {
+    const profile: Partial<StoredUser> = { ...u };
+    delete profile.password;
+    return profile as Profile;
+  });
 }
 
 export function updateStoredUser(
@@ -343,18 +347,6 @@ export function updateStoredAppointmentPayment(
   }
 
   return app;
-}
-
-export function updateStoredAppointmentAssignment(
-  appointmentId: string,
-  barberName: string,
-  chair: string
-): boolean {
-  const app = store.appointments.find((a) => a.id === appointmentId);
-  if (!app) return false;
-  app.barber_name = barberName.trim() || "Pendiente de asignación";
-  app.chair = chair.trim() || "No asignado";
-  return true;
 }
 
 /* ---------------------------------------------------------------------

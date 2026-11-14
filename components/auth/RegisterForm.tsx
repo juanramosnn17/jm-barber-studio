@@ -98,10 +98,10 @@ export default function RegisterForm() {
             </div>
           </div>
 
-          {/* Teléfono / WhatsApp */}
+          {/* Teléfono */}
           <div className="space-y-1">
             <label className="block font-label-md text-on-surface" htmlFor="phone">
-              Teléfono / WhatsApp
+              Teléfono
             </label>
             <div className="relative flex items-center">
               <div className="absolute left-space-md flex items-center gap-1 text-on-surface font-label-md pr-2 pointer-events-none select-none">
@@ -195,7 +195,7 @@ export default function RegisterForm() {
             </div>
           </div>
 
-          {/* Checkboxes de Términos y Notificaciones */}
+          {/* Autorización de datos */}
           <div className="space-y-space-sm pt-space-xs">
             <label className="flex items-start gap-3 cursor-pointer group">
               <input className="peer sr-only" id="terms" name="terms" required type="checkbox" />
@@ -204,28 +204,9 @@ export default function RegisterForm() {
                   check
                 </span>
               </div>
+              {/* Sin enlaces a documentos inexistentes: autorización simple de datos */}
               <span className="font-body-sm text-on-surface-variant leading-tight select-none">
-                Acepto los{" "}
-                <a href="#" className="text-on-surface font-semibold underline underline-offset-2 hover:text-secondary">
-                  Términos de Servicio
-                </a>{" "}
-                y la{" "}
-                <a href="#" className="text-on-surface font-semibold underline underline-offset-2 hover:text-secondary">
-                  Política de Privacidad
-                </a>{" "}
-                de JM Barber Studio.
-              </span>
-            </label>
-
-            <label className="flex items-start gap-3 cursor-pointer group">
-              <input className="peer sr-only" id="reminders" name="reminders" defaultChecked type="checkbox" />
-              <div className="w-5 h-5 rounded bg-surface-container-low peer-checked:bg-primary transition-all duration-200 flex items-center justify-center shrink-0 mt-0.5 shadow-inner">
-                <span className="material-symbols-outlined text-[15px] text-secondary-fixed opacity-0 peer-checked:opacity-100 font-bold">
-                  check
-                </span>
-              </div>
-              <span className="font-body-sm text-on-surface-variant leading-tight select-none">
-                Deseo recibir confirmaciones y recordatorios de cita por WhatsApp o SMS.
+                Autorizo a JM Barber Studio a usar mis datos solo para gestionar mis citas.
               </span>
             </label>
           </div>

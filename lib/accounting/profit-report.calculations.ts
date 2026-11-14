@@ -118,19 +118,6 @@ export function formatAccountingCurrency(
 }
 
 /**
- * Anonimiza parcialmente el nombre del cliente para proteger su privacidad
- * en reportes contables y exportaciones (ej. "Carlos Mendoza" -> "Carlos M.").
- */
-export function anonymizeClientName(fullName: string | null | undefined): string {
-  if (!fullName || !fullName.trim()) return "Cliente";
-  const parts = fullName.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0];
-  const firstName = parts[0];
-  const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
-  return `${firstName} ${lastInitial}.`;
-}
-
-/**
  * Elimina registros duplicados por `id` para garantizar que ninguna cita o gasto
  * se contabilice dos veces cuando se combinan fuentes.
  */

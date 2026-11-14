@@ -7,7 +7,7 @@ Como administrador o barbero del estudio, quiero visualizar todas las citas del 
 
 ## Comportamiento
 1. En `/admin`, el panel muestra en la parte superior 4 tarjetas KPI del día actual: **Citas Totales**, **Confirmadas**, **Pendientes** y **Completadas**.
-2. Debajo, el componente `DailyAppointmentsList` lista las citas de la jornada ordenadas cronológicamente por hora (`HH:MM`), permitiendo filtrarlas por estado (`Todas`, `Confirmadas`, `Pendientes`, `Completadas`) o buscar por nombre de cliente/servicio.
+2. Debajo, el componente `DailyAppointmentsList` lista las citas de la jornada ordenadas cronológicamente por hora (`HH:MM`), permitiendo filtrarlas por estado (`Todas`, `Confirmadas`, `Pendientes`, `Completadas`). No hay buscador: con un solo barbero la agenda del día es corta.
 3. Cada cita dispone de acciones rápidas para cambiar su estado (`updateAppointmentStatusAction`): aprobar (`confirmada`), marcar como terminada (`completada`) o rechazar/anular (`cancelada`). Al marcarse como `completada`, el sistema registra automáticamente su pago en efectivo (`payment_status = 'pagado'`) para el reporte contable.
 
 ## Criterios de aceptación
@@ -22,4 +22,4 @@ Como administrador o barbero del estudio, quiero visualizar todas las citas del 
 
 ## Fuera de alcance
 - Reprogramación arrastrando y soltando (drag & drop) en calendario semanal.
-- **Asignar barbero y sillón por cita** (pospuesto mientras haya un solo barbero). La acción `assignAppointmentBarberAction` y las columnas `barber_name` / `chair` ya existen, así que se puede retomar con la tarea 3.17 cuando se sume un segundo barbero.
+- **Asignar barbero y sillón por cita** (pospuesto mientras haya un solo barbero). Las columnas `barber_name` / `chair` se conservan en la base; la acción del servidor se eliminó (código sin pantalla) y habría que crearla de nuevo si se suma un segundo barbero.

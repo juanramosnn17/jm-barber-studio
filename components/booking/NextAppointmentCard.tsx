@@ -102,12 +102,6 @@ export default function NextAppointmentCard({ appointment }: NextAppointmentCard
         <div className="flex items-center gap-space-sm">
           <button
             type="button"
-            className="py-2.5 px-6 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors font-label-lg font-semibold"
-          >
-            Ver detalles
-          </button>
-          <button
-            type="button"
             onClick={handleCancel}
             disabled={isPending}
             className="py-2.5 px-6 rounded-full text-on-surface-variant hover:text-error hover:bg-error-container/20 transition-colors font-label-lg disabled:opacity-50"
@@ -115,9 +109,6 @@ export default function NextAppointmentCard({ appointment }: NextAppointmentCard
             {isPending ? "Cancelando..." : "Cancelar cita"}
           </button>
         </div>
-        <span className="font-body-sm text-on-surface-variant italic">
-          Recordatorio enviado 24h antes por SMS / WhatsApp
-        </span>
       </div>
     </div>
   );

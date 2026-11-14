@@ -4,9 +4,9 @@
 Como administrador del estudio, quiero gestionar el catálogo de servicios, configurar los días y horas de atención de la barbería y administrar los usuarios registrados y sus roles, viendo los cambios reflejados de inmediato en toda la aplicación.
 
 ## Comportamiento
-1. **Horarios (`/admin/horarios`):** El componente `ScheduleConfig` permite activar o desactivar los días de apertura (lunes a domingo), definir hora de apertura (`open_time`), hora de cierre (`close_time`), inicio y fin de pausa de almuerzo (`break_start`, `break_end`), duración de bloque en minutos (`slot_minutes`) y cantidad de barberos (`barbers_count`). Al guardar con `updateBusinessHoursAction`, el asistente de reservas en `/cliente` recalcula los turnos de inmediato.
+1. **Horarios (`/admin/horarios`):** El componente `ScheduleConfig` permite activar o desactivar los días de apertura (lunes a domingo), definir hora de apertura (`open_time`), hora de cierre (`close_time`), inicio y fin de pausa de almuerzo (`break_start`, `break_end`). La duración de bloque (`slot_minutes`, 30 min) y la cantidad de barberos (`barbers_count`) existen en la base pero no se editan desde la pantalla. Al guardar con `updateBusinessHoursAction`, el asistente de reservas en `/cliente` recalcula los turnos de inmediato.
 2. **Servicios (`/admin/servicios`):** El componente `ServicesManager` lista todos los servicios del catálogo con un interruptor para activarlos o desactivarlos (`toggleServiceActiveAction`) y un formulario para crear un nuevo servicio (`createServiceAction`) con nombre, nombre corto, precio, duración, descripción, qué incluye e imagen.
-3. **Usuarios (`/admin/usuarios`):** El componente `UsersTable` muestra la tabla paginada de usuarios registrados con filtro por rol y buscador, permitiendo editar sus datos y rol (`cliente`, `barbero`, `admin`) mediante `updateUserAction` o eliminarlos con `deleteUserAction`.
+3. **Usuarios (`/admin/usuarios`):** El componente `UsersTable` muestra la tabla paginada de usuarios registrados (sin buscador ni filtro por rol), permitiendo editar sus datos y rol (`cliente`, `barbero`, `admin`) mediante `updateUserAction` o eliminarlos con `deleteUserAction`.
 
 ### Permisos por rol
 | Sección | admin | barbero |

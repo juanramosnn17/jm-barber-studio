@@ -1,6 +1,7 @@
 /* =====================================================================
-   MIDDLEWARE DE SEGURIDAD (middleware.ts)
+   PROXY DE SEGURIDAD (proxy.ts)
    ---------------------------------------------------------------------
+   Convención de Next.js 16 (antes "middleware.ts", tarea 3.14).
    Next.js ejecuta esta función antes de mostrar cada página que
    coincida con "matcher". Toda la lógica de validación de tokens,
    cookies y protección de rutas (/admin y /cliente) está en
@@ -10,11 +11,9 @@
 import type { NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   return updateSession(request);
 }
-
-export { middleware as proxy };
 
 export const config = {
   // Se ejecuta en todas las rutas EXCEPTO archivos estáticos e imágenes

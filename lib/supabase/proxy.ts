@@ -1,7 +1,7 @@
 /* =====================================================================
    RENOVACIÓN DE SESIÓN Y PROTECCIÓN DE RUTAS (lib/supabase/proxy.ts)
    ---------------------------------------------------------------------
-   Invocado por middleware.ts ANTES de cada página. Lo usamos para:
+   Invocado por proxy.ts (raíz del proyecto) ANTES de cada página. Lo usamos para:
      1. Renovar y validar automáticamente la sesión de Supabase (tokens/cookies).
      2. Validar la cookie de sesión híbrida ('jm_user_session').
      3. Proteger las rutas privadas (/cliente y /admin): si alguien sin

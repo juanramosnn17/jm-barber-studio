@@ -46,10 +46,10 @@ jm-barber-studio-main/
 │   └── types.ts                              # Contratos e interfaces TypeScript
 ├── supabase/schema.sql                       # Script DDL PostgreSQL, políticas RLS, triggers y datos semilla
 ├── tests/accounting/profit-report.test.ts    # Pruebas unitarias del motor financiero
-└── middleware.ts                             # Protección de rutas y control de acceso por rol
+└── proxy.ts                                  # Protección de rutas y control de acceso por rol (Next.js 16; antes middleware.ts)
 ```
 
-## Mapa de rutas y control de acceso (`middleware.ts` + `lib/supabase/proxy.ts`)
+## Mapa de rutas y control de acceso (`proxy.ts` + `lib/supabase/proxy.ts`)
 | Ruta | Acceso | Propósito |
 |---|---|---|
 | `/` | Público | Portada del estudio y vitrina de servicios activos |

@@ -6,7 +6,7 @@
 - **Transporte:** no hay API REST propia salvo el reporte contable. Las mutaciones son **Server Actions** (`lib/actions.ts`, `"use server"`) y las lecturas son **funciones de servidor** (`lib/data/queries.ts`) llamadas desde páginas Server Component.
 - **Respuesta estándar de mutaciones:** `ActionResult = { ok: boolean; message?: string }` (`lib/types.ts`). Los mensajes van en español y se muestran tal cual en la UI.
 - **Modo dual:** cada operación funciona con Supabase si `isSupabaseConfigured()` es verdadero, y con el store en memoria (`lib/data/store.ts`) si no. El contrato es el mismo en ambos modos.
-- **Autorización:** la protección de rutas está en `middleware.ts` → `lib/supabase/proxy.ts`. Con Supabase, la última barrera son las políticas **RLS** de `supabase/schema.sql`. Las Server Actions se pueden invocar directamente con un POST, así que **cada acción debe validar el rol en el servidor** (ver tarea 3.13).
+- **Autorización:** la protección de rutas está en `proxy.ts` (raíz) → `lib/supabase/proxy.ts`. Con Supabase, la última barrera son las políticas **RLS** de `supabase/schema.sql`. Las Server Actions se pueden invocar directamente con un POST, así que **cada acción debe validar el rol en el servidor** (ver tarea 3.13).
 - **Fechas y horas:** `date` = `YYYY-MM-DD`, `time` = `HH:MM` (24 h, hora de Colombia). **Dinero:** `numeric(10,2)` en COP, se formatea con `formatPrice()`.
 
 ## Enumeraciones (`lib/types.ts` = `check` en `schema.sql`)

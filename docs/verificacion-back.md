@@ -18,7 +18,7 @@ Leyenda: ✅ cumple · ❌ no cumple · ⏳ pendiente.
 | 2 | F1 | La cuenta inicia sesión desde otro navegador | A entra en incógnito con su correo | ⏳ |
 | 3 | F1 | `/` carga sin errores sin sesión y con cada rol | `curl` sin sesión + visitar con admin, cliente y barbero | ⏳ (sin sesión: ✅ 200, 6 servicios) |
 | 4 | F1 | Admin promovido entra a `/admin`; cookie falsa no da acceso | `curl` con `jm_user_session=user-admin` | ✅ cookie falsa → `/login`; la cuenta promovida a `admin` por SQL entró a `/admin` en producción sin volver a iniciar sesión |
-| 5 | F1 | Servicio desactivado desaparece de `/` | Admin apaga un servicio en `/admin/servicios`; recargar `/` | ⏳ |
+| 5 | F1 | Servicio desactivado desaparece de `/` | Admin apaga un servicio en `/admin/servicios`; recargar `/` | ✅ el admin apagó "Arreglo de cejas" y la portada pública dejó de mostrarlo (5 de 6 servicios) |
 | 6 | F2 | La cita sigue en "Próxima cita" desde otro navegador | A reserva; entra en incógnito | ⏳ |
 | 7 | F2 | El turno de A no aparece disponible para B | B abre la misma fecha | ⏳ |
 | 8 | F2 | Dos clientes al mismo turno: solo uno queda | Probado en la base (error 23505) en el paso 6 | ✅ (base) |
@@ -30,8 +30,8 @@ Leyenda: ✅ cumple · ❌ no cumple · ⏳ pendiente.
 | 14 | F4 | Usuario eliminado desaparece y no puede entrar | Admin elimina a B; B intenta entrar | ⏳ |
 | 15 | F4 | Si Supabase rechaza un cambio, se ve un error | Probado en el paso 7 (borrado bloqueado por RLS) | ✅ (local) |
 | 16 | F4 | Un cliente no puede ejecutar acciones de admin | B (cliente) abre `/admin/horarios` | ⏳ |
-| 17 | F5 | Un gasto registrado se conserva | Admin registra un gasto de prueba y recarga | ⏳ |
-| 18 | F5 | Una cita `completada` aparece como ingreso | Tras el #11, revisar el reporte del periodo | ⏳ |
+| 17 | F5 | Un gasto registrado se conserva | Admin registra un gasto de prueba y recarga | ✅ gasto "prueba" (otros, $1.000, fecha 30-nov) guardado en `expenses` y visible tras recargar |
+| 18 | F5 | Una cita `completada` aparece como ingreso | Tras el #11, revisar el reporte del periodo | ✅ periodo "Hoy": las 2 citas completadas suman $50.000, igual que en la base |
 
 ## Hallazgos durante la verificación
 - **Reserva en hora pasada:** el cliente A reservó hoy a las 09:00 cuando en Bogotá eran las 12:59. → Nuevo criterio en F2 y tarea 3.18. ✅ **Corregido:** tras el despliegue de las 13:03 no se crearon citas en el pasado, y el estudiante confirmó que la grilla de hoy oculta las horas pasadas.

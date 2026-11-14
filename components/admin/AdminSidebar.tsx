@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { Profile } from "@/lib/types";
 
 interface AdminSidebarProps {
@@ -75,34 +74,7 @@ export default function AdminSidebar({ currentPath, adminUser }: AdminSidebarPro
           })}
         </nav>
       </div>
-
-      {/* Pie del Sidebar: Perfil Admin. "Vista de Cliente" queda solo en el
-          encabezado (AppHeader) para no duplicar el acceso. */}
-      <div className="flex flex-col gap-space-sm pt-space-lg border-t border-surface-container-high/60">
-        <div className="p-space-sm rounded-xl bg-surface-container-lowest flex items-center gap-space-sm shadow-sm">
-          {adminUser?.avatar_url ? (
-            <Image
-              src={adminUser.avatar_url}
-              alt="Administrador"
-              width={40}
-              height={40}
-              className="w-10 h-10 rounded-full object-cover shrink-0"
-            />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center font-bold text-on-surface">
-              AD
-            </div>
-          )}
-          <div className="flex flex-col min-w-0">
-            <span className="font-title-md text-on-surface truncate leading-tight font-semibold">
-              {adminUser ? `${adminUser.first_name} ${adminUser.last_name}` : "Admin"}
-            </span>
-            <span className="font-label-sm text-secondary truncate">
-              {adminUser?.role === "admin" ? "Director / Admin" : "Barbero Staff"}
-            </span>
-          </div>
-        </div>
-      </div>
+      {/* Sin pie: el usuario y "Vista de Cliente" ya están en el encabezado (AppHeader). */}
     </aside>
   );
 }

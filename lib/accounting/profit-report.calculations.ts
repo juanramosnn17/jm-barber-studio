@@ -1103,6 +1103,9 @@ export function buildAccountingTransactionRows(
   const rows: AccountingTransactionRow[] = [];
 
   for (const r of resolvedAppointments) {
+    // Vista de la barbería (tarea 3.28): la tabla muestra solo citas cobradas;
+    // las pendientes o canceladas no son movimientos de dinero.
+    if (!r.isCounted) continue;
     const app = r.appointment;
     const payStatus = app.payment_status ?? "pendiente";
     const methodLabel = app.payment_method

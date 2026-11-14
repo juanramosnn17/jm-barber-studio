@@ -15,7 +15,7 @@ Como administrador exclusivo del estudio, quiero consultar el reporte financiero
 | **Saldo de la reserva** | Reserva del negocio − Gastos. Si es negativo, la reserva no alcanzó y se muestra en rojo |
 | **Propinas** | Se registran por cita y se muestran **aparte**; no suman a ingresos ni a la reserva |
 
-**Pantalla simplificada (3.28):** 5 tarjetas (Ingresos · Tu ganancia · Reserva del negocio · Gastos · Saldo de la reserva), más "Servicios realizados" y "Ticket promedio" como datos secundarios. Sin nada de "barbero", sin márgenes %, sin filtro de estado de pago. Periodos: Hoy, Esta semana, Mes actual, Mes anterior y Personalizado. Tabla de 6 columnas (Fecha · Concepto · Método de pago · Ingreso · Gasto · Estado) donde **toda la fila abre el detalle**, con el nombre real del cliente.
+**Pantalla simplificada (3.28):** sin gráficas ni desgloses por servicio, barbero o método (ese desglose va en el cierre de caja), sin comparativas con el periodo anterior. 5 tarjetas (Ingresos · Tu ganancia · Reserva del negocio · Gastos · Saldo de la reserva), más "Servicios realizados" y "Ticket promedio" como datos secundarios. Sin nada de "barbero", sin márgenes %, sin filtro de estado de pago. Periodos: Hoy, Esta semana, Mes actual, Mes anterior y Personalizado. Tabla de 6 columnas (Fecha · Concepto · Método de pago · Ingreso · Gasto · Estado) donde **toda la fila abre el detalle**, con el nombre real del cliente.
 
 **Cierre de caja (3.31):** para un día, muestra lo cobrado por cada método de pago (efectivo, Nequi/Daviplata, transferencia, tarjeta), las propinas, los gastos pagados en efectivo y **el efectivo que debe haber en caja**.
 

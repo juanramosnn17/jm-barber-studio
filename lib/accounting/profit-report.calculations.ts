@@ -1131,7 +1131,7 @@ export function buildAccountingTransactionRows(
       reference: `CITA-${app.id.toUpperCase()}`,
       relatedId: app.id,
       concept: app.service_name || "Servicio de barbería",
-      clientAnonymized: anonymizeClientName(app.client_name),
+      clientAnonymized: app.client_name || "Cliente", // nombre real: solo lo ve el admin (tarea 3.28)
       barberName: app.barber_name || "Sin asignar",
       paymentMethod: app.payment_method ?? null,
       paymentMethodLabel: methodLabel,

@@ -23,12 +23,9 @@ interface ProfitReportFiltersProps {
 
 const QUICK_PERIOD_OPTIONS: { key: QuickPeriodKey; label: string }[] = [
   { key: "today", label: "Hoy" },
-  { key: "yesterday", label: "Ayer" },
   { key: "this_week", label: "Esta semana" },
   { key: "this_month", label: "Mes actual" },
   { key: "last_month", label: "Mes anterior" },
-  { key: "this_quarter", label: "Trimestre actual" },
-  { key: "this_year", label: "Año actual" },
 ];
 
 export default function ProfitReportFilters({
@@ -166,7 +163,7 @@ export default function ProfitReportFilters({
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-4 border-b border-surface-container-high/60">
         <div className="flex flex-col gap-2">
           <span className="font-label-sm uppercase tracking-wider text-on-surface-variant">
-            Periodos rápidos ({period.timezone})
+            Periodo
           </span>
           <div className="flex flex-wrap items-center gap-1.5">
             {QUICK_PERIOD_OPTIONS.map((opt) => {
@@ -203,7 +200,7 @@ export default function ProfitReportFilters({
             >
               add_card
             </span>
-            <span>Registrar gasto operativo</span>
+            <span>Registrar gasto</span>
           </button>
 
           <a
@@ -224,7 +221,7 @@ export default function ProfitReportFilters({
 
       {/* Formulario de filtros detallados */}
       <form onSubmit={handleApplyFilters} className="flex flex-col gap-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+        <div className="grid grid-cols-2 sm:max-w-md gap-3">
           <div className="flex flex-col gap-1">
             <label
               htmlFor="filter-start-date"
@@ -261,120 +258,6 @@ export default function ProfitReportFilters({
             />
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="filter-barber"
-              className="font-label-sm text-on-surface-variant uppercase"
-            >
-              Barbero
-            </label>
-            <select
-              id="filter-barber"
-              name="barberId"
-              value={barberId}
-              onChange={(e) => setBarberId(e.target.value)}
-              className="h-10 px-3 rounded-xl bg-surface-container-low text-on-surface border border-surface-container-high text-sm focus:outline-2 focus:outline-secondary"
-            >
-              <option value="">Todos los barberos</option>
-              {filterOptions.barbers.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="filter-service"
-              className="font-label-sm text-on-surface-variant uppercase"
-            >
-              Servicio
-            </label>
-            <select
-              id="filter-service"
-              name="serviceId"
-              value={serviceId}
-              onChange={(e) => setServiceId(e.target.value)}
-              className="h-10 px-3 rounded-xl bg-surface-container-low text-on-surface border border-surface-container-high text-sm focus:outline-2 focus:outline-secondary"
-            >
-              <option value="">Todos los servicios</option>
-              {filterOptions.services.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="filter-payment-method"
-              className="font-label-sm text-on-surface-variant uppercase"
-            >
-              Método de pago
-            </label>
-            <select
-              id="filter-payment-method"
-              name="paymentMethod"
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className="h-10 px-3 rounded-xl bg-surface-container-low text-on-surface border border-surface-container-high text-sm focus:outline-2 focus:outline-secondary"
-            >
-              <option value="">Todos los métodos</option>
-              {filterOptions.paymentMethods.map((pm) => (
-                <option key={pm.id} value={pm.id}>
-                  {pm.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="filter-payment-status"
-              className="font-label-sm text-on-surface-variant uppercase"
-            >
-              Estado del pago
-            </label>
-            <select
-              id="filter-payment-status"
-              name="paymentStatus"
-              value={paymentStatus}
-              onChange={(e) => setPaymentStatus(e.target.value)}
-              className="h-10 px-3 rounded-xl bg-surface-container-low text-on-surface border border-surface-container-high text-sm focus:outline-2 focus:outline-secondary"
-            >
-              <option value="">Todos los estados</option>
-              {filterOptions.paymentStatuses.map((ps) => (
-                <option key={ps.id} value={ps.id}>
-                  {ps.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="filter-expense-category"
-              className="font-label-sm text-on-surface-variant uppercase"
-            >
-              Categoría de gasto
-            </label>
-            <select
-              id="filter-expense-category"
-              name="expenseCategoryId"
-              value={expenseCategoryId}
-              onChange={(e) => setExpenseCategoryId(e.target.value)}
-              className="h-10 px-3 rounded-xl bg-surface-container-low text-on-surface border border-surface-container-high text-sm focus:outline-2 focus:outline-secondary"
-            >
-              <option value="">Todas las categorías</option>
-              {filterOptions.expenseCategories.map((ec) => (
-                <option key={ec.id} value={ec.id}>
-                  {ec.label}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
 
         {clientError && (
@@ -395,11 +278,6 @@ export default function ProfitReportFilters({
               <strong>Periodo activo:</strong> {period.startDate} al {period.endDate} ({period.daysCount}{" "}
               {period.daysCount === 1 ? "día" : "días"})
             </span>
-            <span aria-hidden="true">•</span>
-            <span>
-              <strong>Comparado contra:</strong> {period.previousStartDate} al{" "}
-              {period.previousEndDate}
-            </span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -409,7 +287,7 @@ export default function ProfitReportFilters({
               onClick={handleResetFilters}
               className="h-9 px-4 rounded-full bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors font-label-md"
             >
-              Limpiar filtros
+              Volver al mes actual
             </button>
             <button
               type="submit"
@@ -419,7 +297,7 @@ export default function ProfitReportFilters({
               <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
                 {isPending ? "sync" : "filter_alt"}
               </span>
-              <span>{isPending ? "Actualizando..." : "Aplicar filtros"}</span>
+              <span>{isPending ? "Actualizando..." : "Ver periodo"}</span>
             </button>
           </div>
         </div>

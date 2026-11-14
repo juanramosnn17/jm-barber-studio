@@ -11,9 +11,6 @@ import Footer from "@/components/layout/Footer";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import ProfitReportFilters from "@/components/accounting/ProfitReportFilters";
 import ProfitSummaryCards from "@/components/accounting/ProfitSummaryCards";
-import ProfitTrendChart from "@/components/accounting/ProfitTrendChart";
-import RevenueBreakdownChart from "@/components/accounting/RevenueBreakdownChart";
-import ExpenseBreakdownChart from "@/components/accounting/ExpenseBreakdownChart";
 import AccountingTransactionsTable from "@/components/accounting/AccountingTransactionsTable";
 import { getAuthenticatedProfile } from "@/lib/accounting/profit-report.repository";
 import { getServerProfitReport } from "@/lib/accounting/profit-report.service";
@@ -82,22 +79,12 @@ export default async function AdminProfitReportPage({
               {/* Encabezado del módulo contable */}
               <header className="bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-surface-container-high/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <span className="font-label-sm uppercase tracking-widest text-secondary font-bold">
-                    Módulo Financiero y Contable
-                  </span>
-                  <h1 className="font-headline-md text-on-surface font-bold mt-1">
-                    Reporte Detallado de Ganancias
+                  <h1 className="font-headline-md text-on-surface font-bold">
+                    Contabilidad
                   </h1>
                   <p className="font-body-sm text-on-surface-variant mt-1">
-                    Cálculo auditable de ingresos confirmados, costos directos (insumos y comisiones),
-                    gastos operativos y márgenes de rentabilidad reales.
+                    Lo que entró, lo que salió y lo que te queda.
                   </p>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="px-3.5 py-1.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm uppercase tracking-wider font-bold">
-                    Acceso exclusivo Admin
-                  </span>
                 </div>
               </header>
 
@@ -137,7 +124,7 @@ export default async function AdminProfitReportPage({
                     filterOptions={reportResponse.data.filterOptions}
                   />
 
-                  {/* 2. Tarjetas de 12 indicadores principales y estado de completitud */}
+                  {/* 2. Tarjetas principales (Ingresos, Tu ganancia, Reserva, Gastos, Saldo) */}
                   <ProfitSummaryCards
                     summary={reportResponse.data.summary}
                     comparison={reportResponse.data.comparison}
@@ -145,34 +132,7 @@ export default async function AdminProfitReportPage({
                     currency={reportResponse.data.period.currency}
                   />
 
-                  {/* 3. Evolución temporal */}
-                  <ProfitTrendChart
-                    timeSeries={reportResponse.data.breakdowns.timeSeries}
-                    granularity={reportResponse.data.period.granularity}
-                    currency={reportResponse.data.period.currency}
-                  />
-
-                  {/* 4. Desgloses por servicio, barbero y método de pago */}
-                  <RevenueBreakdownChart
-                    byService={reportResponse.data.breakdowns.byService}
-                    byBarber={reportResponse.data.breakdowns.byBarber}
-                    byPaymentMethod={
-                      reportResponse.data.breakdowns.byPaymentMethod
-                    }
-                    currency={reportResponse.data.period.currency}
-                  />
-
-                  {/* 5. Desglose de gastos operativos por categoría */}
-                  <ExpenseBreakdownChart
-                    byExpenseCategory={
-                      reportResponse.data.breakdowns.byExpenseCategory
-                    }
-                    totalOperatingExpenses={
-                      reportResponse.data.summary.operatingExpenses
-                    }
-                    currency={reportResponse.data.period.currency}
-                  />
-
+                  {/* 3. Movimientos del periodo (fila clicable abre el detalle y los ajustes) */}
                   {/* 6. Tabla detallada de movimientos auditables con paginación en servidor */}
                   <AccountingTransactionsTable
                     transactions={reportResponse.data.transactions}

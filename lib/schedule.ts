@@ -8,6 +8,36 @@
 
 import type { BusinessHours } from "./types";
 import { minutesToTime, timeToMinutes } from "./format";
+import { siteConfig } from "./config";
+
+/**
+ * Fecha (YYYY-MM-DD) y minutos del día "ahora" en la zona horaria del
+ * estudio (America/Bogota), sin importar la zona del servidor o del
+ * navegador. Tarea 3.18.
+ */
+export function nowInStudio(now: Date = new Date()): { dateISO: string; minutes: number } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: siteConfig.timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+  return {
+    dateISO: `${get("year")}-${get("month")}-${get("day")}`,
+    minutes: Number(get("hour")) * 60 + Number(get("minute")),
+  };
+}
+
+/** ¿El turno (fecha + hora) ya pasó en la hora del estudio? */
+export function isPastSlot(dateISO: string, time: string, now: Date = new Date()): boolean {
+  const current = nowInStudio(now);
+  if (dateISO !== current.dateISO) return dateISO < current.dateISO;
+  return timeToMinutes(time.slice(0, 5)) <= current.minutes;
+}
 
 /**
  * Genera los turnos disponibles del día según el horario de atención
@@ -19,7 +49,8 @@ import { minutesToTime, timeToMinutes } from "./format";
  */
 export function generateDailySlots(
   hours: BusinessHours,
-  bookedSlots: Array<string | { time: string; status?: string }> = []
+  bookedSlots: Array<string | { time: string; status?: string }> = [],
+  dateISO?: string
 ): string[] {
   const start = timeToMinutes(hours.open_time);
   const end = timeToMinutes(hours.close_time);
@@ -42,6 +73,8 @@ export function generateDailySlots(
     if (inBreak) continue;
 
     const slotTime = minutesToTime(t);
+    // Si se indica la fecha, se omiten los turnos que ya pasaron (tarea 3.18)
+    if (dateISO && isPastSlot(dateISO, slotTime)) continue;
     if (!occupiedTimes.has(slotTime)) {
       slots.push(slotTime);
     }

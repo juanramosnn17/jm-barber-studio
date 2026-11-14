@@ -72,7 +72,7 @@ export default function BookingWizard({
   }, [selectedDateISO]);
 
   // Generar turnos para el día seleccionado excluyendo las horas ya reservadas
-  const availableSlots = generateDailySlots(businessHours, bookedSlots);
+  const availableSlots = generateDailySlots(businessHours, bookedSlots, selectedDateISO);
   const isOpen = isOpenOn(selectedDate, businessHours);
 
   // Mantener un horario válido seleccionado cuando cambian los bloques disponibles

@@ -27,6 +27,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { clearSessionUser, getSessionUserProfile, setSessionUser } from "@/lib/auth/session";
 import { getCurrentProfile } from "@/lib/data/queries";
+import { isPastSlot } from "@/lib/schedule";
 import {
   addStoredAppointment,
   addStoredExpense,
@@ -227,7 +228,9 @@ export async function logoutAction() {
   if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient();
-      await supabase.auth.signOut();
+      // Solo este dispositivo: el alcance global cerraba la sesión de esa
+      // cuenta en todos los navegadores (tarea 3.19).
+      await supabase.auth.signOut({ scope: "local" });
     } catch {
       // Ignorar error al limpiar
     }
@@ -251,6 +254,12 @@ export async function createAppointmentAction(
   }
 
   const normalizedTime = time.trim().slice(0, 5);
+
+  // No se reserva en el pasado (hora de Colombia). Tarea 3.18 / spec F2.
+  if (isPastSlot(date, normalizedTime)) {
+    return { ok: false, message: "No puedes reservar en una fecha u hora que ya pasó." };
+  }
+
   const defaultBarber = "Pendiente de asignación";
   const defaultChair = "No asignado";
 

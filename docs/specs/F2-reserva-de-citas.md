@@ -18,6 +18,7 @@ Como cliente autenticado, quiero ver mi próxima cita programada y contar con un
 - [ ] Los horarios correspondientes a la pausa de almuerzo configurada (por defecto `14:00` y `14:30`) no aparecen como seleccionables en la grilla de turnos.
 - [ ] Al confirmar una reserva en una fecha y hora, ese turno desaparece de las horas disponibles para esa misma fecha y aparece reflejado en la tarjeta superior de próxima cita del cliente.
 - [ ] Si se intenta reservar un bloque horario ya ocupado en la misma fecha, el sistema rechaza la creación y muestra el mensaje `"Este bloque horario ya está ocupado. Por favor elige otro turno."`.
+- [ ] Al elegir la fecha de **hoy**, la grilla no muestra los turnos cuya hora ya pasó (hora de Colombia), y el servidor rechaza una reserva en una fecha u hora pasada con el mensaje `"No puedes reservar en una fecha u hora que ya pasó."`. *(Agregado tras la verificación del paso 11: hoy se puede reservar a las 9:00 AM cuando ya es mediodía.)*
 
 ### Regla de negocio para la base de datos
 Un bloque `(fecha, hora)` admite **una sola cita no cancelada**. Con Supabase, esta regla la hace cumplir la propia base de datos (índice único parcial) y no solo la memoria del servidor; la disponibilidad se consulta con una función que devuelve las horas ocupadas sin exponer datos de otros clientes.

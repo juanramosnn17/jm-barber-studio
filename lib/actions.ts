@@ -32,6 +32,7 @@ import {
   addStoredExpense,
   addStoredService,
   findUserByCredentials,
+  getAllStoredAppointments,
   getStoredAppointments,
   registerNewUser,
   toggleStoredServiceActive,
@@ -49,11 +50,25 @@ import type {
   ExpenseCategory,
   PaymentMethod,
   Service,
+  UserRole,
 } from "./types";
 
 const SLOT_TAKEN_MESSAGE = "Este bloque horario ya está ocupado. Por favor elige otro turno.";
 const SAVE_ERROR_MESSAGE =
   "No se pudo guardar el cambio. Verifica tus permisos o inténtalo de nuevo.";
+
+const FORBIDDEN_MESSAGE = "No tienes permisos para realizar esta acción.";
+
+/**
+ * Validación de rol en el servidor (tarea 3.13). Las Server Actions se pueden
+ * invocar con un POST directo, así que proteger la página no basta.
+ * Devuelve el perfil si su rol está permitido, o null si no.
+ */
+async function requireRole(allowed: UserRole[]) {
+  const profile = await getCurrentProfile();
+  if (!profile || !allowed.includes(profile.role)) return null;
+  return profile;
+}
 
 /** Registra el error de Supabase en el servidor y devuelve un resultado fallido. */
 function supabaseFailure(context: string, detail?: string): ActionResult {
@@ -321,6 +336,20 @@ export async function updateAppointmentStatusAction(
   appointmentId: string,
   newStatus: AppointmentStatus
 ): Promise<ActionResult> {
+  // admin y barbero: cualquier estado · cliente: solo cancelar sus propias citas
+  const user = await requireRole(["admin", "barbero", "cliente"]);
+  if (!user) return { ok: false, message: FORBIDDEN_MESSAGE };
+  if (user.role === "cliente") {
+    if (newStatus !== "cancelada") return { ok: false, message: FORBIDDEN_MESSAGE };
+    // En Supabase, RLS ya limita al cliente a sus propias citas; en demo se verifica aquí.
+    if (!isSupabaseConfigured()) {
+      const own = getAllStoredAppointments().some(
+        (a) => a.id === appointmentId && a.client_id === user.id
+      );
+      if (!own) return { ok: false, message: FORBIDDEN_MESSAGE };
+    }
+  }
+
   if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const updatePayload: Record<string, unknown> = { status: newStatus };
@@ -357,6 +386,10 @@ export async function assignAppointmentBarberAction(
   barberName: string,
   chair: string
 ): Promise<ActionResult> {
+  if (!(await requireRole(["admin", "barbero"]))) {
+    return { ok: false, message: FORBIDDEN_MESSAGE };
+  }
+
   const cleanBarber = barberName.trim() || "Pendiente de asignación";
   const cleanChair = chair.trim() || "No asignado";
 
@@ -385,6 +418,10 @@ export async function assignAppointmentBarberAction(
 export async function updateBusinessHoursAction(
   hoursData: Partial<BusinessHours>
 ): Promise<ActionResult> {
+  if (!(await requireRole(["admin"]))) {
+    return { ok: false, message: FORBIDDEN_MESSAGE };
+  }
+
   if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -408,6 +445,10 @@ export async function updateBusinessHoursAction(
  * Alternar visibilidad de un servicio (Activar / Desactivar)
  */
 export async function toggleServiceActiveAction(serviceId: string): Promise<ActionResult> {
+  if (!(await requireRole(["admin"]))) {
+    return { ok: false, message: FORBIDDEN_MESSAGE };
+  }
+
   if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const { data: current, error: readError } = await supabase
@@ -442,6 +483,10 @@ export async function toggleServiceActiveAction(serviceId: string): Promise<Acti
 export async function createServiceAction(
   formData: FormData
 ): Promise<ActionResult> {
+  if (!(await requireRole(["admin"]))) {
+    return { ok: false, message: FORBIDDEN_MESSAGE };
+  }
+
   const name = formData.get("name") as string;
   const shortName = formData.get("short_name") as string;
   const description = formData.get("description") as string;
@@ -504,6 +549,9 @@ export async function updateUserAction(
     role: "cliente" | "barbero" | "admin";
   }
 ): Promise<ActionResult> {
+  if (!(await requireRole(["admin"]))) {
+    return { ok: false, message: FORBIDDEN_MESSAGE };
+  }
   if (!userId || !data.first_name || !data.email) {
     return { ok: false, message: "Nombre y correo son obligatorios." };
   }
@@ -537,6 +585,9 @@ export async function updateUserAction(
  * Eliminar un usuario (Admin)
  */
 export async function deleteUserAction(userId: string): Promise<ActionResult> {
+  if (!(await requireRole(["admin"]))) {
+    return { ok: false, message: FORBIDDEN_MESSAGE };
+  }
   if (!userId) {
     return { ok: false, message: "ID de usuario inválido." };
   }
@@ -565,8 +616,7 @@ export async function deleteUserAction(userId: string): Promise<ActionResult> {
 export async function createExpenseAction(
   formData: FormData
 ): Promise<ActionResult> {
-  const user = await getCurrentProfile();
-  if (!user || user.role !== "admin") {
+  if (!(await requireRole(["admin"]))) {
     return {
       ok: false,
       message: "No tienes permisos para registrar gastos operativos.",

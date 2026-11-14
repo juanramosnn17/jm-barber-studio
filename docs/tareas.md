@@ -50,3 +50,11 @@
 - [ ] 3.24 *(Pedida por el estudiante.)* Editar gastos registrados: `updateExpenseAction` y formulario en el comprobante (spec F5).
 - [ ] 3.25 *(Pedida por el estudiante.)* Eliminar gastos con confirmación: `deleteExpenseAction` y botón en el comprobante (spec F5).
 - [ ] 3.26 *(Pedida por el estudiante.)* Ajustar el pago de una cita completada (método, descuento, reembolso): `adjustAppointmentPaymentAction` y formulario en el comprobante (spec F5).
+
+## Contabilidad para la barbería (rediseño pedido por el estudiante)
+> Orden: 3.27 → 3.28 → 3.29 → 3.30 → 3.31. Spec: `docs/specs/F5-contabilidad-y-ganancias.md` → "Modelo contable de la barbería".
+- [ ] 3.27 Reserva fija por servicio sin comisión: columna `services.reserve_amount` (editable en `/admin/servicios`), `appointments.reserve_amount` fijada al completar, y motor contable con Ingresos · Reserva · Tu ganancia · Gastos · Saldo de la reserva.
+- [ ] 3.28 Simplificar pantallas de contabilidad: 5 tarjetas, sin "barbero" ni márgenes %, periodos reducidos y tabla de 6 columnas con fila clicable.
+- [ ] 3.29 Categoría "Compra de insumos / productos" en gastos y propinas por cita (aparte de los ingresos).
+- [ ] 3.30 Venta de productos: nueva tabla `product_sales` con registrar, anular y eliminar; suma a Ingresos.
+- [ ] 3.31 Cierre de caja del día por método de pago y efectivo esperado en caja.

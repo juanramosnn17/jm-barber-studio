@@ -10,22 +10,41 @@ import type { BusinessHours } from "./types";
 import { minutesToTime, timeToMinutes } from "./format";
 
 /**
- * Genera todos los turnos del día según el horario.
+ * Genera los turnos disponibles del día según el horario de atención
+ * y excluye los bloques horarios que ya tienen citas activas/reservadas.
  * Ejemplo con apertura 09:00, cierre 12:00 y turnos de 30 min:
  *   ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30"]
- * Los turnos que caen dentro de la pausa de almuerzo se omiten.
+ * Los turnos que caen dentro de la pausa de almuerzo o que ya están
+ * ocupados se omiten para evitar overbooking (cruce de citas).
  */
-export function generateDailySlots(hours: BusinessHours): string[] {
+export function generateDailySlots(
+  hours: BusinessHours,
+  bookedSlots: Array<string | { time: string; status?: string }> = []
+): string[] {
   const start = timeToMinutes(hours.open_time);
   const end = timeToMinutes(hours.close_time);
   const breakStart = hours.break_start ? timeToMinutes(hours.break_start) : null;
   const breakEnd = hours.break_end ? timeToMinutes(hours.break_end) : null;
   const step = Math.max(hours.slot_minutes, 5);
 
+  const occupiedTimes = new Set<string>();
+  for (const item of bookedSlots) {
+    if (typeof item === "string") {
+      occupiedTimes.add(item.trim().slice(0, 5));
+    } else if (item && typeof item.time === "string" && item.status !== "cancelada") {
+      occupiedTimes.add(item.time.trim().slice(0, 5));
+    }
+  }
+
   const slots: string[] = [];
   for (let t = start; t < end; t += step) {
     const inBreak = breakStart !== null && breakEnd !== null && t >= breakStart && t < breakEnd;
-    if (!inBreak) slots.push(minutesToTime(t));
+    if (inBreak) continue;
+
+    const slotTime = minutesToTime(t);
+    if (!occupiedTimes.has(slotTime)) {
+      slots.push(slotTime);
+    }
   }
   return slots;
 }

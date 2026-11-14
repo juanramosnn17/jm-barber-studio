@@ -38,6 +38,8 @@ create table if not exists public.services (
   description text not null,
   includes text,
   price numeric(10,2) not null,
+  direct_cost numeric(10,2) not null default 0,
+  commission_percentage numeric(5,2) not null default 40,
   duration_label text not null,
   duration_minutes integer not null default 30,
   image_url text,
@@ -79,7 +81,7 @@ create policy "Solo administradores pueden actualizar el horario"
   on public.business_hours for update
   using ((select role from public.profiles where id = auth.uid()) = 'admin');
 
--- 4. TABLA: appointments (Citas y reservaciones)
+-- 4. TABLA: appointments (Citas y reservaciones con registro contable de pago)
 create table if not exists public.appointments (
   id uuid default gen_random_uuid() primary key,
   client_id uuid references public.profiles(id) on delete cascade not null,
@@ -90,6 +92,15 @@ create table if not exists public.appointments (
   time time not null,
   status text not null check (status in ('pendiente', 'confirmada', 'en_curso', 'completada', 'cancelada')) default 'pendiente',
   notes text,
+  payment_status text not null check (payment_status in ('pendiente', 'pagado', 'reembolsado', 'anulado')) default 'pendiente',
+  payment_method text check (payment_method in ('efectivo', 'transferencia', 'tarjeta', 'nequi_daviplata')),
+  gross_amount numeric(10,2),
+  discount_amount numeric(10,2) not null default 0,
+  refund_amount numeric(10,2) not null default 0,
+  tip_amount numeric(10,2) not null default 0,
+  direct_cost_amount numeric(10,2),
+  commission_amount numeric(10,2),
+  paid_at timestamp with time zone,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -106,6 +117,27 @@ create policy "Los clientes autenticados pueden crear citas para sí mismos"
 create policy "Los clientes pueden cancelar sus citas y los administradores actualizarlas"
   on public.appointments for update
   using (auth.uid() = client_id or (select role from public.profiles where id = auth.uid()) in ('admin', 'barbero'));
+
+-- 4.1 TABLA: expenses (Gastos operativos de la barbería — solo administradores)
+create table if not exists public.expenses (
+  id uuid default gen_random_uuid() primary key,
+  date date not null,
+  time time not null default '12:00',
+  category text not null check (category in ('arriendo', 'servicios_publicos', 'nomina_administrativa', 'insumos_generales', 'publicidad', 'mantenimiento', 'otros')),
+  concept text not null,
+  amount numeric(10,2) not null check (amount >= 0),
+  payment_method text not null check (payment_method in ('efectivo', 'transferencia', 'tarjeta', 'nequi_daviplata')) default 'transferencia',
+  status text not null check (status in ('registrado', 'anulado')) default 'registrado',
+  reference text,
+  notes text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.expenses enable row level security;
+
+create policy "Solo administradores pueden consultar y gestionar gastos operativos"
+  on public.expenses for all
+  using ((select role from public.profiles where id = auth.uid()) = 'admin');
 
 -- 5. TRIGGER: Creación automática de perfil al registrarse en Auth
 create or replace function public.handle_new_user()
@@ -135,12 +167,12 @@ insert into public.business_hours (id, open_days, open_time, close_time, break_s
 values (1, '{1,2,3,4,5,6}', '09:00', '20:00', '14:00', '15:00', 30, 2)
 on conflict (id) do nothing;
 
-insert into public.services (name, short_name, description, includes, price, duration_label, duration_minutes, image_url, icon, is_active, sort_order)
+insert into public.services (name, short_name, description, includes, price, direct_cost, commission_percentage, duration_label, duration_minutes, image_url, icon, is_active, sort_order)
 values
-  ('Corte de cabello', 'Corte de cabello', 'Corte técnico personalizado a tijera y máquina según morfología facial, incluye lavado revitalizante, tónico de cuero cabelludo y peinado final.', 'Lavado + Peinado + Asesoría rápida', 25000, '35-40 min', 40, '/images/servicios/corte-cabello.jpg', 'content_cut', true, 1),
-  ('Arreglo de barba', 'Corte de barba', 'Perfilado milimétrico con navaja clásica, tratamiento con toallas calientes aromáticas e hidratación intensiva con aceites orgánicos.', 'Toalla caliente + Aceites esenciales', 18000, '25-30 min', 30, '/images/servicios/arreglo-barba.jpg', 'face', true, 2),
-  ('Arreglo de cejas', 'Arreglo de cejas', 'Diseño, definición y limpieza de cejas respetando la armonía de la mirada mediante técnica combinada de navaja y tijera de precisión.', 'Perfilado con navaja + Fijación', 10000, '15 min', 15, '/images/servicios/arreglo-cejas.jpg', 'brush', true, 3),
-  ('Corte Pro (Cabello + Barba)', 'Corte Pro', 'Servicio combinado de corte técnico integral a tijera y máquina con perfilado y ritual de toalla caliente para barba.', 'Cabello + Barba completa + Toalla caliente', 38000, '50-60 min', 60, '/images/servicios/corte-pro.jpg', 'stars', true, 4),
-  ('Corte Pro Max (Cabello + Barba + Cejas)', 'Corte Pro Max', 'Experiencia total de cuidado facial y capilar: corte completo, diseño integral de barba con toalla caliente infusionada y limpieza precisa de cejas.', 'Cabello + Barba + Cejas + Toalla aromática', 45000, '65-75 min', 75, '/images/servicios/corte-pro-max.jpg', 'workspace_premium', true, 5),
-  ('Corte Ultra Pro Max', 'Corte Ultra Pro Max', 'El ritual insignia definitivo: corte morfológico a medida, barba con doble toalla y vapor, cejas, más asesoría personalizada de imagen y estilismo exclusivo.', 'Corte + Barba + Cejas + Asesoría de Imagen', 60000, '80-90 min', 90, '/images/servicios/arreglo-cejas.jpg', 'diamond', true, 6)
+  ('Corte de cabello', 'Corte de cabello', 'Corte técnico personalizado a tijera y máquina según morfología facial, incluye lavado revitalizante, tónico de cuero cabelludo y peinado final.', 'Lavado + Peinado + Asesoría rápida', 25000, 2500, 40, '35-40 min', 40, '/images/servicios/corte-cabello.jpg', 'content_cut', true, 1),
+  ('Arreglo de barba', 'Corte de barba', 'Perfilado milimétrico con navaja clásica, tratamiento con toallas calientes aromáticas e hidratación intensiva con aceites orgánicos.', 'Toalla caliente + Aceites esenciales', 18000, 2000, 40, '25-30 min', 30, '/images/servicios/arreglo-barba.jpg', 'face', true, 2),
+  ('Arreglo de cejas', 'Arreglo de cejas', 'Diseño, definición y limpieza de cejas respetando la armonía de la mirada mediante técnica combinada de navaja y tijera de precisión.', 'Perfilado con navaja + Fijación', 10000, 800, 40, '15 min', 15, '/images/servicios/arreglo-cejas.jpg', 'brush', true, 3),
+  ('Corte Pro (Cabello + Barba)', 'Corte Pro', 'Servicio combinado de corte técnico integral a tijera y máquina con perfilado y ritual de toalla caliente para barba.', 'Cabello + Barba completa + Toalla caliente', 38000, 4000, 45, '50-60 min', 60, '/images/servicios/corte-pro.jpg', 'stars', true, 4),
+  ('Corte Pro Max (Cabello + Barba + Cejas)', 'Corte Pro Max', 'Experiencia total de cuidado facial y capilar: corte completo, diseño integral de barba con toalla caliente infusionada y limpieza precisa de cejas.', 'Cabello + Barba + Cejas + Toalla aromática', 45000, 4800, 45, '65-75 min', 75, '/images/servicios/corte-pro-max.jpg', 'workspace_premium', true, 5),
+  ('Corte Ultra Pro Max', 'Corte Ultra Pro Max', 'El ritual insignia definitivo: corte morfológico a medida, barba con doble toalla y vapor, cejas, más asesoría personalizada de imagen y estilismo exclusivo.', 'Corte + Barba + Cejas + Asesoría de Imagen', 60000, 6500, 50, '80-90 min', 90, '/images/servicios/arreglo-cejas.jpg', 'diamond', true, 6)
 on conflict do nothing;

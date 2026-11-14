@@ -20,6 +20,7 @@ export const siteConfig = {
   //   - "EUR" + "es-ES" → 25,00 €
   currency: "COP",
   locale: "es-CO",
+  timezone: process.env.APP_TIMEZONE || "America/Bogota",
 
   // EDITAR AQUÍ: Correo de ejemplo que aparece en el campo de inicio de sesión.
   loginPlaceholder: "cliente@jmbarber.com",

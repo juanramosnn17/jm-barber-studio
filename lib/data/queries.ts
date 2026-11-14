@@ -6,7 +6,8 @@
    si no, lee del store en memoria reactivo.
    ===================================================================== */
 
-import "server-only";
+"use server";
+
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -50,8 +51,8 @@ function mapAppointment(row: AppointmentRow): AppointmentWithDetails {
     id: row.id,
     client_id: row.client_id,
     service_id: row.service_id,
-    barber_name: row.barber_name,
-    chair: row.chair,
+    barber_name: row.barber_name ?? "Pendiente de asignación",
+    chair: row.chair ?? "No asignado",
     date: row.date,
     time: row.time.slice(0, 5),
     status: row.status,
@@ -68,7 +69,7 @@ const APPOINTMENT_SELECT =
 /* ---------------------------------------------------------------------
    USUARIO ACTUAL
    --------------------------------------------------------------------- */
-export const getCurrentProfile = cache(
+const fetchCurrentProfile = cache(
   async (demoRoleFallback?: UserRole): Promise<Profile | null> => {
     // 1. Revisar si hay sesión activa en cookies locales
     const sessionProfile = await getSessionUserProfile();
@@ -96,6 +97,10 @@ export const getCurrentProfile = cache(
     return null;
   }
 );
+
+export async function getCurrentProfile(demoRoleFallback?: UserRole): Promise<Profile | null> {
+  return fetchCurrentProfile(demoRoleFallback);
+}
 
 /* ---------------------------------------------------------------------
    SERVICIOS
@@ -141,15 +146,17 @@ export async function getNextAppointment(clientId: string): Promise<AppointmentW
     console.error("Error al leer la próxima cita en Supabase:", error.message);
     return getClientNextAppointment(clientId);
   }
-  return data ? mapAppointment(data as unknown as AppointmentRow) : null;
+  return data ? mapAppointment(data as unknown as AppointmentRow) : getClientNextAppointment(clientId);
 }
 
 /* ---------------------------------------------------------------------
-   CITAS DEL DÍA (panel de administración)
+   CITAS DEL DÍA (panel de administración y validación de disponibilidad)
    --------------------------------------------------------------------- */
 export async function getAppointmentsByDate(date: string): Promise<AppointmentWithDetails[]> {
+  const localAppointments = getStoredAppointments(date).filter((a) => a.status !== "cancelada");
+
   if (!isSupabaseConfigured()) {
-    return getStoredAppointments(date);
+    return localAppointments;
   }
 
   const supabase = await createClient();
@@ -162,9 +169,39 @@ export async function getAppointmentsByDate(date: string): Promise<AppointmentWi
 
   if (error) {
     console.error("Error al leer citas en Supabase:", error.message);
-    return getStoredAppointments(date);
+    return localAppointments;
   }
-  return ((data as unknown as AppointmentRow[]) ?? []).map(mapAppointment);
+
+  const remoteAppointments = ((data as unknown as AppointmentRow[]) ?? []).map(mapAppointment);
+
+  // Combinar citas remotas con el store optimista en memoria sin duplicar
+  const mergedMap = new Map<string, AppointmentWithDetails>();
+  for (const app of remoteAppointments) {
+    mergedMap.set(`${app.date}-${app.time}`, app);
+  }
+  for (const app of localAppointments) {
+    const key = `${app.date}-${app.time}`;
+    if (!mergedMap.has(key)) {
+      mergedMap.set(key, app);
+    }
+  }
+
+  return Array.from(mergedMap.values()).sort((a, b) => a.time.localeCompare(b.time));
+}
+
+/**
+ * Devuelve únicamente las horas ("HH:MM") ya ocupadas en una fecha determinada
+ * para evitar el cruce de citas (overbooking) en el BookingWizard.
+ */
+export async function getBookedSlotsByDate(date: string): Promise<string[]> {
+  const appointments = await getAppointmentsByDate(date);
+  return Array.from(
+    new Set(
+      appointments
+        .filter((a) => a.status !== "cancelada")
+        .map((a) => a.time.slice(0, 5))
+    )
+  );
 }
 
 /* ---------------------------------------------------------------------
@@ -197,8 +234,10 @@ export async function getProfilesPage(
   page: number,
   pageSize: number
 ): Promise<{ rows: Profile[]; total: number }> {
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
+  const safePage = Math.max(1, Math.floor(page || 1));
+  const safePageSize = Math.max(1, Math.floor(pageSize || 6));
+  const from = (safePage - 1) * safePageSize;
+  const to = from + safePageSize - 1;
 
   if (!isSupabaseConfigured()) {
     const all = getAllUsers();
@@ -236,3 +275,4 @@ export async function getClientCount(): Promise<number> {
   }
   return count ?? 0;
 }
+

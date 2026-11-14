@@ -22,17 +22,27 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { clearSessionUser, getSessionUserProfile, setSessionUser } from "@/lib/auth/session";
 import {
   addStoredAppointment,
+  addStoredExpense,
   addStoredService,
   findUserByCredentials,
+  getStoredAppointments,
   registerNewUser,
   toggleStoredServiceActive,
+  updateStoredAppointmentAssignment,
   updateStoredAppointmentStatus,
   updateStoredBusinessHours,
   getStoredServices,
   updateStoredUser,
   deleteStoredUser,
 } from "@/lib/data/store";
-import type { ActionResult, AppointmentStatus, BusinessHours, Service } from "./types";
+import type {
+  ActionResult,
+  AppointmentStatus,
+  BusinessHours,
+  ExpenseCategory,
+  PaymentMethod,
+  Service,
+} from "./types";
 
 /**
  * Iniciar sesión de usuario
@@ -220,6 +230,19 @@ export async function createAppointmentAction(
     return { ok: false, message: "Faltan datos requeridos de la reserva." };
   }
 
+  const normalizedTime = time.trim().slice(0, 5);
+
+  // Validar que no exista cruce de citas (overbooking) en memoria
+  const existingLocal = getStoredAppointments(date).some(
+    (a) => a.time.slice(0, 5) === normalizedTime && a.status !== "cancelada"
+  );
+  if (existingLocal) {
+    return {
+      ok: false,
+      message: "Este bloque horario ya está ocupado. Por favor elige otro turno.",
+    };
+  }
+
   // Obtener perfil actual
   const user = await getSessionUserProfile();
   const clientId = user?.id || "usr-anonimo";
@@ -231,15 +254,20 @@ export async function createAppointmentAction(
   const serviceName = srv?.name || "Servicio";
   const durationLabel = srv?.duration_label || "40 min";
 
-  // 1. Guardar en store local para inmediatez
+  const defaultBarber = "Pendiente de asignación";
+  const defaultChair = "No asignado";
+
+  // 1. Guardar en store local para inmediatez (Híbrido Optimista)
   const newApp = addStoredAppointment({
     client_id: clientId,
     client_name: clientName,
     service_id: serviceId,
     service_name: serviceName,
     duration_label: durationLabel,
+    barber_name: defaultBarber,
+    chair: defaultChair,
     date,
-    time,
+    time: normalizedTime,
     notes,
   });
 
@@ -250,8 +278,10 @@ export async function createAppointmentAction(
       await supabase.from("appointments").insert({
         client_id: clientId,
         service_id: serviceId,
+        barber_name: defaultBarber,
+        chair: defaultChair,
         date,
-        time,
+        time: normalizedTime,
         status: "confirmada",
         notes: notes || null,
       });
@@ -281,9 +311,17 @@ export async function updateAppointmentStatusAction(
   if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient();
+      const updatePayload: Record<string, unknown> = { status: newStatus };
+      if (newStatus === "completada") {
+        updatePayload.payment_status = "pagado";
+        updatePayload.payment_method = "efectivo";
+        updatePayload.paid_at = new Date().toISOString();
+      } else if (newStatus === "cancelada") {
+        updatePayload.payment_status = "anulado";
+      }
       await supabase
         .from("appointments")
-        .update({ status: newStatus })
+        .update(updatePayload)
         .eq("id", appointmentId);
     } catch (e) {
       console.warn("Error actualizando cita en Supabase:", e);
@@ -291,8 +329,39 @@ export async function updateAppointmentStatusAction(
   }
 
   revalidatePath("/admin");
+  revalidatePath("/admin/contabilidad/ganancias");
   revalidatePath("/cliente");
   return { ok: true };
+}
+
+/**
+ * Asignar barbero y sillón a una cita desde el panel de Administración
+ */
+export async function assignAppointmentBarberAction(
+  appointmentId: string,
+  barberName: string,
+  chair: string
+): Promise<ActionResult> {
+  const cleanBarber = barberName.trim() || "Pendiente de asignación";
+  const cleanChair = chair.trim() || "No asignado";
+
+  updateStoredAppointmentAssignment(appointmentId, cleanBarber, cleanChair);
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = await createClient();
+      await supabase
+        .from("appointments")
+        .update({ barber_name: cleanBarber, chair: cleanChair })
+        .eq("id", appointmentId);
+    } catch (e) {
+      console.warn("Error asignando barbero en Supabase:", e);
+    }
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/cliente");
+  return { ok: true, message: "Barbero y sillón asignados correctamente." };
 }
 
 /**
@@ -465,3 +534,68 @@ export async function deleteUserAction(userId: string): Promise<ActionResult> {
   revalidatePath("/admin/usuarios");
   return { ok: success, message: success ? "Usuario eliminado con éxito." : "No se encontró el usuario." };
 }
+
+/**
+ * Registrar un nuevo gasto operativo en contabilidad (exclusivo Admin)
+ */
+export async function createExpenseAction(
+  formData: FormData
+): Promise<ActionResult> {
+  const user = await getSessionUserProfile();
+  if (!user || user.role !== "admin") {
+    return {
+      ok: false,
+      message: "No tienes permisos para registrar gastos operativos.",
+    };
+  }
+
+  const date = (formData.get("date") as string)?.trim() || "";
+  const time = (formData.get("time") as string)?.trim() || "12:00";
+  const category = (formData.get("category") as ExpenseCategory) || "otros";
+  const concept = (formData.get("concept") as string)?.trim() || "";
+  const amount = Number(formData.get("amount"));
+  const paymentMethod =
+    (formData.get("payment_method") as PaymentMethod) || "transferencia";
+  const reference = (formData.get("reference") as string)?.trim() || null;
+
+  if (!date || !concept || !Number.isFinite(amount) || amount <= 0) {
+    return {
+      ok: false,
+      message: "Por favor ingresa fecha, concepto y un importe mayor a cero.",
+    };
+  }
+
+  addStoredExpense({
+    date,
+    time,
+    category,
+    concept,
+    amount: Math.round(amount),
+    payment_method: paymentMethod,
+    status: "registrado",
+    reference,
+    notes: null,
+  });
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = await createClient();
+      await supabase.from("expenses").insert({
+        date,
+        time,
+        category,
+        concept,
+        amount: Math.round(amount),
+        payment_method: paymentMethod,
+        status: "registrado",
+        reference,
+      });
+    } catch (e) {
+      console.warn("Error insertando gasto en Supabase:", e);
+    }
+  }
+
+  revalidatePath("/admin/contabilidad/ganancias");
+  return { ok: true, message: "Gasto operativo registrado correctamente." };
+}
+

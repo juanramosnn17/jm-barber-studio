@@ -1,22 +1,25 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import type { BusinessHours, Service } from "@/lib/types";
 import { formatFullDate, formatPrice, toISODate } from "@/lib/format";
 import { generateDailySlots, isOpenOn } from "@/lib/schedule";
+import { getAppointmentsByDate } from "@/lib/data/queries";
 import { createAppointmentAction } from "@/lib/actions";
 
 interface BookingWizardProps {
   services: Service[];
   businessHours: BusinessHours;
   initialServiceId?: string;
+  initialBookedSlots?: string[];
 }
 
 export default function BookingWizard({
   services,
   businessHours,
   initialServiceId,
+  initialBookedSlots = [],
 }: BookingWizardProps) {
   // Preseleccionar según ID o el primero
   const initialService =
@@ -26,10 +29,11 @@ export default function BookingWizard({
 
   const [selectedService, setSelectedService] = useState<Service | null>(initialService);
 
-  // Fecha seleccionada (por defecto hoy o dentro de 1 día)
-  const today = new Date();
-  const [selectedDate, setSelectedDate] = useState<Date>(today);
-  const [selectedSlot, setSelectedSlot] = useState<string>("16:00");
+  // Fecha seleccionada (por defecto hoy)
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [bookedSlots, setBookedSlots] = useState<string[]>(initialBookedSlots);
+  const [isLoadingSlots, setIsLoadingSlots] = useState<boolean>(false);
+  const [selectedSlot, setSelectedSlot] = useState<string>("");
   const [statusMessage, setStatusMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [confirmedBooking, setConfirmedBooking] = useState<{
     id: string;
@@ -41,9 +45,46 @@ export default function BookingWizard({
   } | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // Generar turnos para el día seleccionado
-  const availableSlots = generateDailySlots(businessHours);
+  const selectedDateISO = toISODate(selectedDate);
+
+  // Consultar citas ocupadas de la fecha seleccionada para evitar overbooking
+  useEffect(() => {
+    let active = true;
+    setIsLoadingSlots(true);
+
+    getAppointmentsByDate(selectedDateISO)
+      .then((appointments) => {
+        if (!active) return;
+        const occupied = appointments
+          .filter((a) => a.status !== "cancelada")
+          .map((a) => a.time.slice(0, 5));
+        setBookedSlots(occupied);
+      })
+      .catch(() => {
+        if (!active) return;
+        setBookedSlots([]);
+      })
+      .finally(() => {
+        if (active) setIsLoadingSlots(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedDateISO]);
+
+  // Generar turnos para el día seleccionado excluyendo las horas ya reservadas
+  const availableSlots = generateDailySlots(businessHours, bookedSlots);
   const isOpen = isOpenOn(selectedDate, businessHours);
+
+  // Mantener un horario válido seleccionado cuando cambian los bloques disponibles
+  useEffect(() => {
+    if (availableSlots.length === 0) {
+      setSelectedSlot("");
+    } else if (!selectedSlot || !availableSlots.includes(selectedSlot)) {
+      setSelectedSlot(availableSlots[0]);
+    }
+  }, [availableSlots, selectedSlot]);
 
   // Generar días del mes actual para el calendario interactivo
   const currentYear = selectedDate.getFullYear();
@@ -54,22 +95,25 @@ export default function BookingWizard({
   const handleDaySelect = (day: number) => {
     const nextDate = new Date(currentYear, currentMonth, day);
     setSelectedDate(nextDate);
+    setStatusMessage(null);
   };
 
   const handleBookingConfirm = () => {
-    if (!selectedService) return;
+    if (!selectedService || !selectedSlot) return;
     setStatusMessage(null);
     startTransition(async () => {
       const res = await createAppointmentAction(
         selectedService.id,
-        toISODate(selectedDate),
+        selectedDateISO,
         selectedSlot
       );
       if (res.ok) {
+        // Actualización optimista: eliminar el turno recién reservado de la interfaz
+        setBookedSlots((prev) => Array.from(new Set([...prev, selectedSlot])));
         setConfirmedBooking({
           id: res.appointmentId || `JM-${Date.now().toString().slice(-6)}`,
           serviceName: selectedService.name,
-          date: toISODate(selectedDate),
+          date: selectedDateISO,
           time: selectedSlot,
           price: selectedService.price,
           duration: selectedService.duration_label,
@@ -349,22 +393,33 @@ export default function BookingWizard({
 
           {/* PASO 3: Horarios Disponibles */}
           <div className="flex flex-col gap-space-sm">
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-primary text-on-primary font-label-sm flex items-center justify-center font-bold">
-                3
-              </span>
-              <h3 className="font-title-lg text-on-surface font-semibold">
-                Horarios disponibles ({formatFullDate(toISODate(selectedDate))})
-              </h3>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-primary text-on-primary font-label-sm flex items-center justify-center font-bold">
+                  3
+                </span>
+                <h3 className="font-title-lg text-on-surface font-semibold">
+                  Horarios disponibles ({formatFullDate(selectedDateISO)})
+                </h3>
+              </div>
+              {isLoadingSlots && (
+                <span className="font-label-sm text-on-surface-variant animate-pulse">
+                  Verificando disponibilidad...
+                </span>
+              )}
             </div>
 
             {!isOpen ? (
               <p className="p-4 rounded-xl bg-surface-container text-on-surface-variant text-body-sm">
                 El estudio se encuentra cerrado los días seleccionados. Por favor escoge otro día.
               </p>
+            ) : availableSlots.length === 0 ? (
+              <p className="p-4 rounded-xl bg-surface-container text-on-surface-variant text-body-sm">
+                Todos los horarios para esta fecha ya se encuentran reservados. Por favor selecciona otro día.
+              </p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2 pt-1">
-                {availableSlots.slice(0, 10).map((slot) => {
+                {availableSlots.map((slot) => {
                   const isSelected = selectedSlot === slot;
                   return (
                     <button
@@ -409,12 +464,12 @@ export default function BookingWizard({
               <div className="flex justify-between items-center py-2 border-b border-surface-variant/40">
                 <span className="font-body-sm text-on-surface-variant">Fecha</span>
                 <span className="font-title-md text-on-surface">
-                  {formatFullDate(toISODate(selectedDate))}
+                  {formatFullDate(selectedDateISO)}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-surface-variant/40">
                 <span className="font-body-sm text-on-surface-variant">Hora de reserva</span>
-                <span className="font-title-md text-on-surface">{selectedSlot}</span>
+                <span className="font-title-md text-on-surface">{selectedSlot || "Sin horario"}</span>
               </div>
               <div className="flex justify-between items-center py-3 bg-surface-container-low px-space-md rounded-xl mt-space-xs">
                 <span className="font-title-md text-on-surface font-semibold">Total estimado</span>
@@ -429,7 +484,7 @@ export default function BookingWizard({
             <button
               type="button"
               onClick={handleBookingConfirm}
-              disabled={isPending || !selectedService || !isOpen}
+              disabled={isPending || isLoadingSlots || !selectedService || !isOpen || !selectedSlot}
               className="w-full py-3.5 rounded-full bg-secondary text-on-secondary hover:bg-secondary/90 shadow-md font-label-lg uppercase tracking-wider font-bold transition-all text-center disabled:opacity-50"
             >
               {isPending ? "Confirmando..." : "Confirmar reserva"}

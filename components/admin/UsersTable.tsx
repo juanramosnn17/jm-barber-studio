@@ -12,8 +12,9 @@
    Todos los cambios actualizan el Store y Supabase en tiempo real.
    ===================================================================== */
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Profile, UserRole } from "@/lib/types";
 import { getInitials } from "@/lib/format";
 import { deleteUserAction, updateUserAction } from "@/lib/actions";
@@ -21,12 +22,31 @@ import { deleteUserAction, updateUserAction } from "@/lib/actions";
 interface UsersTableProps {
   initialProfiles: Profile[];
   totalCount: number;
+  currentPage?: number;
+  pageSize?: number;
 }
 
-export default function UsersTable({ initialProfiles, totalCount }: UsersTableProps) {
+export default function UsersTable({
+  initialProfiles,
+  totalCount,
+  currentPage = 1,
+  pageSize = 6,
+}: UsersTableProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [profiles, setProfiles] = useState<Profile[]>(initialProfiles);
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 6;
+  const [total, setTotal] = useState<number>(totalCount);
+
+  // Sincronizar el estado optimista local cuando cambia la página desde el servidor
+  useEffect(() => {
+    setProfiles(initialProfiles);
+  }, [initialProfiles]);
+
+  useEffect(() => {
+    setTotal(totalCount);
+  }, [totalCount]);
 
   // Estados para modal de edición
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
@@ -43,8 +63,15 @@ export default function UsersTable({ initialProfiles, totalCount }: UsersTablePr
   const [actionMessage, setActionMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const totalPages = Math.ceil(profiles.length / pageSize) || 1;
-  const paginatedProfiles = profiles.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const paginatedProfiles = profiles;
+
+  const goToPage = (targetPage: number) => {
+    const nextPage = Math.max(1, Math.min(totalPages, targetPage));
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    params.set("page", String(nextPage));
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   // Abrir modal de edición con los datos del usuario seleccionado
   const handleOpenEdit = (user: Profile) => {
@@ -89,6 +116,7 @@ export default function UsersTable({ initialProfiles, totalCount }: UsersTablePr
         );
         setEditingUser(null);
         setActionMessage({ ok: true, text: "Usuario actualizado correctamente." });
+        router.refresh();
       } else {
         setActionMessage({ ok: false, text: res.message || "Error al actualizar usuario." });
       }
@@ -102,9 +130,17 @@ export default function UsersTable({ initialProfiles, totalCount }: UsersTablePr
     startTransition(async () => {
       const res = await deleteUserAction(deletingUser.id);
       if (res.ok) {
-        setProfiles((prev) => prev.filter((u) => u.id !== deletingUser.id));
+        const remainingOnPage = profiles.filter((u) => u.id !== deletingUser.id);
+        setProfiles(remainingOnPage);
+        setTotal((prev) => Math.max(0, prev - 1));
         setDeletingUser(null);
         setActionMessage({ ok: true, text: "Usuario eliminado satisfactoriamente." });
+
+        if (remainingOnPage.length === 0 && currentPage > 1) {
+          goToPage(currentPage - 1);
+        } else {
+          router.refresh();
+        }
       } else {
         setActionMessage({ ok: false, text: res.message || "Error al eliminar usuario." });
       }
@@ -231,30 +267,41 @@ export default function UsersTable({ initialProfiles, totalCount }: UsersTablePr
         </table>
       </div>
 
-      {/* Paginación */}
+      {/* Paginación Real desde Base de Datos */}
       <div className="p-4 bg-surface-container-low/50 flex flex-col sm:flex-row items-center justify-between gap-3 font-body-sm text-on-surface-variant border-t border-surface-container-high/60">
         <span>
-          Mostrando {paginatedProfiles.length} de {profiles.length} registros
+          Mostrando {paginatedProfiles.length} de {total} registros (Página {currentPage} de {totalPages})
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage <= 1}
             className="px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface hover:text-on-surface transition-colors disabled:opacity-40"
           >
             Anterior
           </button>
+          {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pageNum) => {
+            const isActive = pageNum === currentPage;
+            return (
+              <button
+                key={pageNum}
+                type="button"
+                onClick={() => goToPage(pageNum)}
+                className={`px-3 py-1.5 rounded-lg transition-colors ${
+                  isActive
+                    ? "bg-primary text-on-primary font-semibold"
+                    : "bg-surface-container text-on-surface-variant hover:bg-surface hover:text-on-surface"
+                }`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
           <button
             type="button"
-            className="px-3 py-1.5 rounded-lg bg-primary text-on-primary font-semibold"
-          >
-            {currentPage}
-          </button>
-          <button
-            type="button"
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage >= totalPages}
             className="px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface hover:text-on-surface transition-colors disabled:opacity-40"
           >
             Siguiente

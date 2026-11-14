@@ -13,6 +13,15 @@ export default function AdminSidebar({ currentPath, adminUser }: AdminSidebarPro
     { label: "Servicios", icon: "spa", href: "/admin/servicios" },
     { label: "Horarios", icon: "schedule", href: "/admin/horarios" },
     { label: "Usuarios", icon: "group", href: "/admin/usuarios" },
+    ...(adminUser?.role === "admin"
+      ? [
+          {
+            label: "Contabilidad",
+            icon: "monitoring",
+            href: "/admin/contabilidad/ganancias",
+          },
+        ]
+      : []),
   ];
 
   return (

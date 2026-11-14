@@ -16,8 +16,27 @@
      desde el admin y verlos reflejados al instante en el cliente y home.
    ===================================================================== */
 
-import type { AppointmentWithDetails, BusinessHours, Profile, Service, UserRole } from "@/lib/types";
-import { mockAdmin, mockBusinessHours, mockClient, mockProfiles, mockServices, getMockTodayAppointments, getMockNextAppointment } from "./mock";
+import type {
+  AppointmentWithDetails,
+  BusinessHours,
+  Expense,
+  PaymentMethod,
+  PaymentStatus,
+  Profile,
+  Service,
+  UserRole,
+} from "@/lib/types";
+import {
+  mockAdmin,
+  mockBusinessHours,
+  mockClient,
+  mockProfiles,
+  mockServices,
+  getMockTodayAppointments,
+  getMockHistoricalAppointments,
+  getMockExpenses,
+  getMockNextAppointment,
+} from "./mock";
 
 interface StoredUser extends Profile {
   password?: string;
@@ -31,6 +50,7 @@ declare global {
     services: Service[];
     businessHours: BusinessHours;
     appointments: AppointmentWithDetails[];
+    expenses: Expense[];
   } | undefined;
 }
 
@@ -48,8 +68,12 @@ if (!globalThis.__jm_store) {
     appointments: [
       getMockNextAppointment(),
       ...getMockTodayAppointments(),
+      ...getMockHistoricalAppointments(),
     ],
+    expenses: [...getMockExpenses()],
   };
+} else if (!globalThis.__jm_store.expenses) {
+  globalThis.__jm_store.expenses = [...getMockExpenses()];
 }
 
 const store = globalThis.__jm_store;
@@ -158,6 +182,8 @@ export function toggleStoredServiceActive(serviceId: string): Service | null {
 export function addStoredService(newSrv: Omit<Service, "id" | "sort_order">): Service {
   const service: Service = {
     ...newSrv,
+    direct_cost: newSrv.direct_cost ?? Math.round(newSrv.price * 0.1),
+    commission_percentage: newSrv.commission_percentage ?? 40,
     id: `srv-${Date.now()}`,
     sort_order: store.services.length + 1,
   };
@@ -187,8 +213,12 @@ export function updateStoredBusinessHours(updated: Partial<BusinessHours>): Busi
 
 export function getStoredAppointments(date?: string): AppointmentWithDetails[] {
   if (date) {
-    return store.appointments.filter((a) => a.date === date);
+    return store.appointments.filter((a) => a.date === date && a.status !== "cancelada");
   }
+  return [...store.appointments];
+}
+
+export function getAllStoredAppointments(): AppointmentWithDetails[] {
   return [...store.appointments];
 }
 
@@ -212,10 +242,18 @@ export function addStoredAppointment(data: {
   service_id: string;
   service_name: string;
   duration_label?: string;
+  barber_name?: string | null;
+  chair?: string | null;
   date: string;
   time: string;
   notes?: string | null;
 }): AppointmentWithDetails {
+  const srv = store.services.find((s) => s.id === data.service_id);
+  const price = srv?.price ?? 0;
+  const directCost = srv?.direct_cost ?? Math.round(price * 0.1);
+  const commissionPct = srv?.commission_percentage ?? 40;
+  const commissionAmt = Math.round((price * commissionPct) / 100);
+
   const newApp: AppointmentWithDetails = {
     id: `app-${Date.now()}`,
     client_id: data.client_id,
@@ -223,12 +261,21 @@ export function addStoredAppointment(data: {
     service_id: data.service_id,
     service_name: data.service_name,
     duration_label: data.duration_label || "40 min",
-    barber_name: "Marcos Silva",
-    chair: "Sillón 01",
+    barber_name: data.barber_name ?? "Pendiente de asignación",
+    chair: data.chair ?? "No asignado",
     date: data.date,
     time: data.time,
     status: "confirmada",
     notes: data.notes || null,
+    payment_status: "pendiente",
+    payment_method: null,
+    gross_amount: price,
+    discount_amount: 0,
+    refund_amount: 0,
+    tip_amount: 0,
+    direct_cost_amount: directCost,
+    commission_amount: commissionAmt,
+    paid_at: null,
     created_at: new Date().toISOString(),
   };
 
@@ -238,10 +285,91 @@ export function addStoredAppointment(data: {
 
 export function updateStoredAppointmentStatus(
   appointmentId: string,
-  newStatus: AppointmentWithDetails["status"]
+  newStatus: AppointmentWithDetails["status"],
+  paymentMethod?: PaymentMethod
 ): boolean {
   const app = store.appointments.find((a) => a.id === appointmentId);
   if (!app) return false;
   app.status = newStatus;
+
+  const srv = store.services.find((s) => s.id === app.service_id);
+  const defaultGross = app.gross_amount ?? srv?.price ?? 0;
+  const defaultDirectCost = app.direct_cost_amount ?? srv?.direct_cost ?? 0;
+  const commissionPct = srv?.commission_percentage ?? 40;
+
+  if (newStatus === "completada" && (!app.payment_status || app.payment_status === "pendiente")) {
+    app.payment_status = "pagado";
+    app.payment_method = paymentMethod ?? app.payment_method ?? "efectivo";
+    app.gross_amount = defaultGross;
+    app.direct_cost_amount = defaultDirectCost;
+    app.commission_amount =
+      app.commission_amount ?? Math.round((defaultGross * commissionPct) / 100);
+    app.paid_at = new Date().toISOString();
+  } else if (newStatus === "cancelada" && app.payment_status === "pendiente") {
+    app.payment_status = "anulado";
+  }
+
   return true;
+}
+
+export function updateStoredAppointmentPayment(
+  appointmentId: string,
+  payment: {
+    payment_status: PaymentStatus;
+    payment_method?: PaymentMethod | null;
+    gross_amount?: number;
+    discount_amount?: number;
+    refund_amount?: number;
+    tip_amount?: number;
+  }
+): AppointmentWithDetails | null {
+  const app = store.appointments.find((a) => a.id === appointmentId);
+  if (!app) return null;
+
+  app.payment_status = payment.payment_status;
+  if (payment.payment_method !== undefined) app.payment_method = payment.payment_method;
+  if (payment.gross_amount !== undefined) app.gross_amount = payment.gross_amount;
+  if (payment.discount_amount !== undefined) app.discount_amount = payment.discount_amount;
+  if (payment.refund_amount !== undefined) app.refund_amount = payment.refund_amount;
+  if (payment.tip_amount !== undefined) app.tip_amount = payment.tip_amount;
+  if (payment.payment_status === "pagado" && !app.paid_at) {
+    app.paid_at = new Date().toISOString();
+  }
+
+  return app;
+}
+
+export function updateStoredAppointmentAssignment(
+  appointmentId: string,
+  barberName: string,
+  chair: string
+): boolean {
+  const app = store.appointments.find((a) => a.id === appointmentId);
+  if (!app) return false;
+  app.barber_name = barberName.trim() || "Pendiente de asignación";
+  app.chair = chair.trim() || "No asignado";
+  return true;
+}
+
+/* ---------------------------------------------------------------------
+   GASTOS OPERATIVOS (EXPENSES)
+   --------------------------------------------------------------------- */
+
+export function getStoredExpenses(): Expense[] {
+  return [...(store.expenses ?? [])].sort((a, b) =>
+    `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`)
+  );
+}
+
+export function addStoredExpense(
+  data: Omit<Expense, "id" | "created_at">
+): Expense {
+  const expense: Expense = {
+    ...data,
+    id: `exp-${Date.now()}`,
+    created_at: new Date().toISOString(),
+  };
+  if (!store.expenses) store.expenses = [];
+  store.expenses.unshift(expense);
+  return expense;
 }

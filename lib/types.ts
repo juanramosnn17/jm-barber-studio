@@ -17,6 +17,33 @@ export type AppointmentStatus =
   | "completada" // Servicio terminado
   | "cancelada"; // Cancelada por el cliente o rechazada por el estudio
 
+/** Estado financiero del pago asociado a una cita. */
+export type PaymentStatus =
+  | "pendiente"
+  | "pagado"
+  | "reembolsado"
+  | "anulado";
+
+/** Métodos de pago admitidos en la barbería. */
+export type PaymentMethod =
+  | "efectivo"
+  | "transferencia"
+  | "tarjeta"
+  | "nequi_daviplata";
+
+/** Categorías de gastos operativos de la barbería. */
+export type ExpenseCategory =
+  | "arriendo"
+  | "servicios_publicos"
+  | "nomina_administrativa"
+  | "insumos_generales"
+  | "publicidad"
+  | "mantenimiento"
+  | "otros";
+
+/** Estado de un registro de gasto operativo. */
+export type ExpenseStatus = "registrado" | "anulado";
+
 /**
  * DATOS DE SUPABASE: tabla "profiles".
  * Un perfil por cada usuario registrado (se crea automáticamente al
@@ -45,6 +72,8 @@ export interface Service {
   description: string;
   includes: string | null; // Qué incluye (texto libre)
   price: number; // Precio en la moneda configurada (sin decimales para COP)
+  direct_cost?: number; // Costo directo de insumos por servicio (COP)
+  commission_percentage?: number; // % de comisión para el barbero sobre el servicio (0-100)
   duration_label: string; // Texto de duración (p. ej. "35-40 min")
   duration_minutes: number; // Duración máxima en minutos (para calcular agenda)
   image_url: string | null; // Ruta de la imagen (p. ej. "/images/servicios/corte.jpg")
@@ -67,6 +96,15 @@ export interface Appointment {
   time: string; // Hora "HH:MM" (24 h)
   status: AppointmentStatus;
   notes: string | null;
+  payment_status?: PaymentStatus;
+  payment_method?: PaymentMethod | null;
+  gross_amount?: number | null;
+  discount_amount?: number;
+  refund_amount?: number;
+  tip_amount?: number;
+  direct_cost_amount?: number | null;
+  commission_amount?: number | null;
+  paid_at?: string | null;
   created_at?: string;
 }
 
@@ -75,6 +113,24 @@ export interface AppointmentWithDetails extends Appointment {
   client_name: string;
   service_name: string;
   duration_label?: string;
+}
+
+/**
+ * DATOS DE SUPABASE: tabla "expenses".
+ * Gastos operativos registrados en la barbería.
+ */
+export interface Expense {
+  id: string;
+  date: string; // "YYYY-MM-DD"
+  time: string; // "HH:MM"
+  category: ExpenseCategory;
+  concept: string;
+  amount: number;
+  payment_method: PaymentMethod;
+  status: ExpenseStatus;
+  reference: string | null;
+  notes: string | null;
+  created_at?: string;
 }
 
 /**

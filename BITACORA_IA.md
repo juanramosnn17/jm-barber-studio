@@ -1,0 +1,19 @@
+# Bitácora de Uso de IA · JM Barber Studio
+
+Registro de prompts clave, acciones del agente, decisiones de interventoría y lecciones aprendidas aplicando **Spec-Driven Development (SDD)** sobre el proyecto JM Barber Studio.
+
+## 1. Prompts clave de la sesión y acciones del agente
+
+| Fase / Bloque | Prompt clave enviado al agente | Qué hizo el agente | Revisión / Interventoría humana |
+|---|---|---|---|
+| **Exploración inicial del repositorio** | *"Quiero que empecemos a trabajar en este proyecto pero sin embargo quiero que lo conozcas completamente y me lo expliques, no se nada, no entiendo nada, quiero saber su estructura y como esta construido"* | Leyó `package.json`, listó la estructura de carpetas (`app/`, `components/`, `lib/`, `supabase/`, `docs/`, `tests/`), inspeccionó el esquema SQL, tipos, consultas, acciones y middleware, y entregó un mapa explicativo completo de la arquitectura híbrida (Demo en memoria + Supabase). | Se verificó que el agente identificara correctamente las 3 áreas del sistema (Cliente, Admin/Barbero y Contabilidad) sin modificar ningún archivo de código. |
+| **Documentación SDD Inversa (Bloques 1 a 8 de la Guía U3)** | *"Contexto: este proyecto (barberia JM) YA ESTÁ TERMINADO y funciona. Necesito documentarlo con Spec-Driven Development siguiendo la estructura de la guía adjunta (Unidad 3 del diplomado), como si los planos se hubieran hecho antes del código (SDD inverso)..."* | Extrajo los tokens reales de `app/globals.css`, revisó las vistas principales y generó la documentación SDD completa: `docs/producto.md`, `docs/arquitectura.md`, `docs/specs/F1..F5`, `docs/diseno/identidad-visual.md`, `docs/decisiones.md`, `docs/tareas.md`, `CLAUDE.md`, `.claude/skills/ui-componentes/SKILL.md`, `BITACORA_IA.md` y `GUIA_ENTREGA.md`. | Se comprobó que todos los códigos HEX, rutas, roles y criterios de aceptación correspondieran exactamente al comportamiento real de la aplicación hoy y que no se alterara el código fuente. |
+| **Verificación de la documentación SDD (ahorro de tokens)** | *Mismo prompt de SDD inverso, con reglas estrictas: "solo .md, no tocar código, leer lo mínimo, no preguntar"* | Detectó que los 10 entregables ya existían y, en vez de reescribirlos, contrastó con `grep` los mensajes de error de F1/F2 (`lib/actions.ts`) y los HEX de `app/globals.css`; todo coincidía. Solo corrigió `GUIA_ENTREGA.md` (la carpeta no es repositorio git, se quitó `git log` y se añadió la figura 10) y agregó esta fila. | Se aceptó reutilizar la documentación existente en lugar de duplicarla, conforme a la regla "reúsala, no la dupliques". |
+
+## 2. Problemas comunes controlados con SDD e interventoría
+
+| Situación / Riesgo | Cómo se controló en el proyecto |
+|---|---|
+| **Riesgo de desconexión cuando no hay variables de entorno de Supabase** | En lugar de fallar al iniciar sin `.env.local`, se documentó y preservó la arquitectura híbrida (`isSupabaseConfigured()` + `lib/data/store.ts`) registrada en `docs/decisiones.md` y en las reglas de `CLAUDE.md`. |
+| **Consistencia visual entre pantallas públicas, panel cliente y módulo contable** | Se empaquetaron los tokens reales de Tailwind v4 (`@theme` en `app/globals.css`) dentro de `docs/diseno/identidad-visual.md` y en la skill `.claude/skills/ui-componentes/SKILL.md` para obligar al uso de clases semánticas (`bg-surface`, `text-secondary`, `bg-primary`). |
+| **Protección de información financiera sensible** | Se especificó en `F5-contabilidad-y-ganancias.md` y en `docs/arquitectura.md` la doble validación de rol (`middleware.ts` + verificación en servidor) para que el rol `barbero` pueda gestionar citas en `/admin` pero tenga restringida la ruta `/admin/contabilidad/ganancias`. |

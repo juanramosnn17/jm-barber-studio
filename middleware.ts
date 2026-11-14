@@ -1,16 +1,20 @@
 /* =====================================================================
-   PROXY (proxy.ts) — antes llamado "middleware" en Next.js ≤ 15
+   MIDDLEWARE DE SEGURIDAD (middleware.ts)
    ---------------------------------------------------------------------
    Next.js ejecuta esta función antes de mostrar cada página que
-   coincida con "matcher". Toda la lógica está en lib/supabase/proxy.ts.
+   coincida con "matcher". Toda la lógica de validación de tokens,
+   cookies y protección de rutas (/admin y /cliente) está en
+   lib/supabase/proxy.ts.
    ===================================================================== */
 
 import type { NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   return updateSession(request);
 }
+
+export { middleware as proxy };
 
 export const config = {
   // Se ejecuta en todas las rutas EXCEPTO archivos estáticos e imágenes

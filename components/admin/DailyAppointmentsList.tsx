@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import type { AppointmentStatus, AppointmentWithDetails } from "@/lib/types";
 import { formatTime12h } from "@/lib/format";
 import { updateAppointmentStatusAction } from "@/lib/actions";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 
 interface DailyAppointmentsListProps {
   initialAppointments: AppointmentWithDetails[];
@@ -15,6 +16,7 @@ export default function DailyAppointmentsList({
   const [filter, setFilter] = useState<"todas" | AppointmentStatus>("todas");
   const [appointments, setAppointments] = useState(initialAppointments);
   const [, startTransition] = useTransition();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const filteredAppointments = appointments.filter((app) => {
     if (filter === "todas") return true;
@@ -22,17 +24,25 @@ export default function DailyAppointmentsList({
   });
 
   const handleStatusChange = (id: string, newStatus: AppointmentStatus) => {
+    const previous = appointments;
+    setErrorMessage(null);
     startTransition(async () => {
       // Optimistic update
       setAppointments((prev) =>
         prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
       );
-      await updateAppointmentStatusAction(id, newStatus);
+      const res = await updateAppointmentStatusAction(id, newStatus);
+      if (!res.ok) {
+        // Revertir: el cambio no se guardó
+        setAppointments(previous);
+        setErrorMessage(res.message || "No se pudo actualizar la cita.");
+      }
     });
   };
 
   return (
     <div className="p-space-lg rounded-2xl bg-surface-container-lowest shadow-sm flex flex-col gap-space-md">
+      {errorMessage && <ErrorMessage message={errorMessage} />}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
         <div>
           <h2 className="font-title-lg text-on-surface">Citas del Día</h2>

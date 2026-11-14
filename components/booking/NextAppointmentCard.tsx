@@ -1,6 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 import type { AppointmentWithDetails } from "@/lib/types";
 import { formatLongDate, formatTime12h } from "@/lib/format";
 import { updateAppointmentStatusAction } from "@/lib/actions";
@@ -11,6 +12,7 @@ interface NextAppointmentCardProps {
 
 export default function NextAppointmentCard({ appointment }: NextAppointmentCardProps) {
   const [isPending, startTransition] = useTransition();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!appointment) {
     return (
@@ -36,8 +38,12 @@ export default function NextAppointmentCard({ appointment }: NextAppointmentCard
 
   const handleCancel = () => {
     if (confirm("¿Estás seguro de que deseas cancelar esta cita?")) {
+      setErrorMessage(null);
       startTransition(async () => {
-        await updateAppointmentStatusAction(appointment.id, "cancelada");
+        const res = await updateAppointmentStatusAction(appointment.id, "cancelada");
+        if (!res.ok) {
+          setErrorMessage(res.message || "No se pudo cancelar la cita.");
+        }
       });
     }
   };
@@ -92,6 +98,7 @@ export default function NextAppointmentCard({ appointment }: NextAppointmentCard
 
       {/* Botones de acción de la cita */}
       <div className="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+        {errorMessage && <ErrorMessage message={errorMessage} />}
         <div className="flex items-center gap-space-sm">
           <button
             type="button"

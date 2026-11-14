@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import type { BusinessHours } from "@/lib/types";
 import { updateBusinessHoursAction } from "@/lib/actions";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 
 interface ScheduleConfigProps {
   initialHours: BusinessHours;
@@ -15,6 +16,7 @@ export default function ScheduleConfig({ initialHours }: ScheduleConfigProps) {
   const [breakStart, setBreakStart] = useState(initialHours.break_start || "14:00");
   const [breakEnd, setBreakEnd] = useState(initialHours.break_end || "15:00");
   const [saved, setSaved] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const daysMap = [
@@ -34,6 +36,7 @@ export default function ScheduleConfig({ initialHours }: ScheduleConfigProps) {
   };
 
   const handleSave = () => {
+    setErrorMessage(null);
     startTransition(async () => {
       const res = await updateBusinessHoursAction({
         open_days: openDays,
@@ -46,6 +49,8 @@ export default function ScheduleConfig({ initialHours }: ScheduleConfigProps) {
       if (res.ok) {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
+      } else {
+        setErrorMessage(res.message || "No se pudieron guardar los horarios.");
       }
     });
   };
@@ -141,6 +146,8 @@ export default function ScheduleConfig({ initialHours }: ScheduleConfigProps) {
           </div>
         </div>
       </div>
+
+      {errorMessage && <ErrorMessage message={errorMessage} />}
 
       <div className="pt-2 flex flex-col sm:flex-row items-center gap-space-sm">
         <button

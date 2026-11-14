@@ -21,6 +21,7 @@ import Image from "next/image";
 import type { Service } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
 import { createServiceAction, toggleServiceActiveAction } from "@/lib/actions";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 
 interface ServicesManagerProps {
   initialServices: Service[];
@@ -51,17 +52,25 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
   const [customImageUrl, setCustomImageUrl] = useState("");
   const [selectedIcon, setSelectedIcon] = useState(PRESET_ICONS[0].icon);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [toggleError, setToggleError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // Alternar visibilidad de un servicio
   const handleToggle = (id: string) => {
+    const previous = services;
+    setToggleError(null);
     // Optimistic UI update
     setServices((prev) =>
       prev.map((s) => (s.id === id ? { ...s, is_active: !s.is_active } : s))
     );
 
     startTransition(async () => {
-      await toggleServiceActiveAction(id);
+      const res = await toggleServiceActiveAction(id);
+      if (!res.ok) {
+        // Revertir: el cambio no se guardó
+        setServices(previous);
+        setToggleError(res.message || "No se pudo cambiar el estado del servicio.");
+      }
     });
   };
 
@@ -110,6 +119,8 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
 
   return (
     <div className="p-space-lg rounded-2xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-space-md border border-surface-container-high/60">
+      {toggleError && <ErrorMessage message={toggleError} />}
+
       {/* Cabecera del Módulo */}
       <div className="flex items-center justify-between pb-2 border-b border-surface-container-high/60">
         <div className="flex flex-col">

@@ -26,8 +26,8 @@ Toma estos **9 pantallazos** en orden siguiendo los bloques de la guía de la Un
 8. **Módulo de Contabilidad (`http://localhost:3000/admin/contabilidad/ganancias`) mostrando las tarjetas de Ganancia Neta, gráficas y tabla de transacciones:**
    > *Figura 8 (Bloque 7 · F5 Módulo financiero): Reporte detallado de ganancias (exclusivo para rol `admin`) con cálculo de ingresos netos, comisiones, gastos operativos y exportación a CSV.*
 
-9. **Vista de `docs/tareas.md` con todas las tareas marcadas `[x]` (y, si lo tienes, el proyecto desplegado en Vercel):**
-   > *Figura 9 (Bloques 6 y 8 · Cronograma y Entrega de la fachada): Checklist de tareas completadas en `docs/tareas.md` y evidencia de la aplicación funcionando.*
+9. **Panel de Vercel del proyecto `jm-barber-studio` (estado Ready) junto al repo en GitHub, o la app abierta en https://jm-barber-studio-delta.vercel.app:**
+   > *Figura 9 (Bloque 8 · Entrega de la fachada): Repositorio público en GitHub con `CLAUDE.md` y front desplegado en Vercel con URL pública y despliegue continuo desde `main`.*
 
 10. **`BITACORA_IA.md` abierto en el editor mostrando la tabla de prompts:**
    > *Figura 10 (Bloque 8 · Bitácora de IA): Registro de los prompts clave usados con el agente y la revisión humana de cada resultado.*

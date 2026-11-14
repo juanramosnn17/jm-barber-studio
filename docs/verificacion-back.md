@@ -34,7 +34,8 @@ Leyenda: ✅ cumple · ❌ no cumple · ⏳ pendiente.
 | 18 | F5 | Una cita `completada` aparece como ingreso | Tras el #11, revisar el reporte del periodo | ⏳ |
 
 ## Hallazgos durante la verificación
-- **Reserva en hora pasada:** el cliente A reservó hoy a las 09:00 cuando en Bogotá eran las 12:59. → Nuevo criterio en F2 y tarea 3.18.
-- **Cierre de sesión global:** a las 12:57 un `logout` con `scope=global` cerró la sesión del admin también en el panel. → Tarea 3.19.
+- **Reserva en hora pasada:** el cliente A reservó hoy a las 09:00 cuando en Bogotá eran las 12:59. → Nuevo criterio en F2 y tarea 3.18. ✅ **Corregido:** tras el despliegue de las 13:03 no se crearon citas en el pasado, y el estudiante confirmó que la grilla de hoy oculta las horas pasadas.
+- **Cierre de sesión global:** a las 12:57 un `logout` con `scope=global` cerró la sesión del admin también en el panel. → Tarea 3.19. ✅ **Corregido:** los cierres de las 13:11, 13:16 y 13:24 fueron `scope=local`, y la sesión de admin siguió activa.
+- **Sin salida desde "Vista de Cliente"** (reportado por el estudiante) → criterio nuevo en F3 y tarea 3.20. ✅ **Corregido:** botón "Volver al panel", verificado por el estudiante.
 
 Adicional (F5, sin criterio [Back]): la API `/api/accounting/profit-report` responde **401** sin sesión (JSON y CSV) ✅.

@@ -251,6 +251,11 @@ create table if not exists public.expenses (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- Reserva fija por servicio para gastos del negocio (tarea 3.27). Se fija en la
+-- cita al completarla para que cambiar el monto no altere el historial.
+alter table public.services add column if not exists reserve_amount numeric(10,2) not null default 0 check (reserve_amount >= 0);
+alter table public.appointments add column if not exists reserve_amount numeric(10,2) check (reserve_amount >= 0);
+
 -- Auditoría de anulaciones (tarea 3.23): el gasto anulado se conserva con su motivo.
 alter table public.expenses add column if not exists void_reason text;
 alter table public.expenses add column if not exists voided_at timestamp with time zone;

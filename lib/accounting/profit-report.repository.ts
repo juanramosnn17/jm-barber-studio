@@ -47,6 +47,7 @@ type SupabaseAppointmentAccountingRow = {
   tip_amount?: number | string | null;
   direct_cost_amount?: number | string | null;
   commission_amount?: number | string | null;
+  reserve_amount?: number | string | null;
   paid_at?: string | null;
   created_at?: string;
   service: { name: string; duration_label: string; price?: number } | null;
@@ -70,7 +71,7 @@ type SupabaseExpenseRow = {
 };
 
 const ACCOUNTING_APPOINTMENT_SELECT =
-  "id, client_id, service_id, barber_name, chair, date, time, status, notes, payment_status, payment_method, gross_amount, discount_amount, refund_amount, tip_amount, direct_cost_amount, commission_amount, paid_at, created_at, service:services(name, duration_label, price), client:profiles(first_name, last_name)";
+  "id, client_id, service_id, barber_name, chair, date, time, status, notes, payment_status, payment_method, gross_amount, discount_amount, refund_amount, tip_amount, direct_cost_amount, commission_amount, reserve_amount, paid_at, created_at, service:services(name, duration_label, price), client:profiles(first_name, last_name)";
 
 function mapAccountingAppointment(
   row: SupabaseAppointmentAccountingRow
@@ -120,6 +121,10 @@ function mapAccountingAppointment(
     commission_amount:
       row.commission_amount !== null && row.commission_amount !== undefined
         ? Number(row.commission_amount)
+        : null,
+    reserve_amount:
+      row.reserve_amount !== null && row.reserve_amount !== undefined
+        ? Number(row.reserve_amount)
         : null,
     paid_at: row.paid_at ?? null,
     created_at: row.created_at,
@@ -276,6 +281,7 @@ export async function fetchAccountingDataset(
       ? (servicesRes.data as Service[]).map((s) => ({
           ...s,
           price: Number(s.price),
+          reserve_amount: Number(s.reserve_amount ?? 0),
           direct_cost:
             s.direct_cost !== undefined && s.direct_cost !== null
               ? Number(s.direct_cost)

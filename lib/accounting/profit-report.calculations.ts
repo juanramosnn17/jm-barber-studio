@@ -41,7 +41,6 @@ const ZERO = BigInt(0);
 const ONE = BigInt(1);
 const TWO = BigInt(2);
 const HUNDRED = BigInt(100);
-const FIVE_THOUSAND = BigInt(5000);
 const TEN_THOUSAND = BigInt(10000);
 
 /**
@@ -218,39 +217,22 @@ export function resolveAppointmentFinancials(
   const netCents = grossCents - discountCents - refundCents;
   const hasRefundExceedingGross = refundCents > grossCents - discountCents;
 
-  // Verificar si existen datos de costo directo y comisión
-  const hasSupplyCost =
-    appointment.direct_cost_amount !== undefined &&
-    appointment.direct_cost_amount !== null
-      ? true
-      : service?.direct_cost !== undefined && service?.direct_cost !== null;
+  // MODELO DE LA BARBERÍA (spec F5, tarea 3.27): el dueño es el único barbero,
+  // así que NO hay comisión ni costo de insumos oculto por servicio. Cada
+  // servicio cobrado aparta una RESERVA fija para los gastos del negocio:
+  // la fijada en la cita al completarla o, si no existe, la actual del servicio.
+  const hasSupplyCost = true;
+  const hasCommission = true;
 
-  const hasCommission =
-    appointment.commission_amount !== undefined &&
-    appointment.commission_amount !== null
-      ? true
-      : service?.commission_percentage !== undefined &&
-        service?.commission_percentage !== null;
-
-  // Si el servicio fue reembolsado en su totalidad (netCents <= 0), no genera comisión ni cuenta como unidad vendida neta
+  // Si el servicio fue reembolsado en su totalidad (netCents <= 0), no aparta reserva ni cuenta como unidad vendida
   const isPaidServiceUnit = netCents > ZERO;
 
-  const supplyCostCents = isPaidServiceUnit
-    ? toCents(appointment.direct_cost_amount ?? service?.direct_cost ?? 0)
+  const reserveCents = isPaidServiceUnit
+    ? toCents(appointment.reserve_amount ?? service?.reserve_amount ?? 0)
     : ZERO;
-
-  let commissionCents = ZERO;
-  if (isPaidServiceUnit) {
-    if (
-      appointment.commission_amount !== undefined &&
-      appointment.commission_amount !== null
-    ) {
-      commissionCents = toCents(appointment.commission_amount);
-    } else if (service?.commission_percentage !== undefined) {
-      const pctBasis = BigInt(Math.round(service.commission_percentage * 100));
-      commissionCents = (netCents * pctBasis + FIVE_THOUSAND) / TEN_THOUSAND;
-    }
-  }
+  // La reserva nunca supera lo efectivamente cobrado
+  const supplyCostCents = reserveCents > netCents ? netCents : reserveCents;
+  const commissionCents = ZERO;
 
   const directCostCents = supplyCostCents + commissionCents;
   const grossProfitCents = netCents - directCostCents;
@@ -435,18 +417,10 @@ export function calculateProfitSummaryAndCompleteness(
   const missingComponents: string[] = [];
   const warnings: string[] = [];
 
-  const hasDirectCostsConfigured =
-    services.length > 0 &&
-    services.every((s) => s.direct_cost !== undefined && s.direct_cost !== null) &&
-    !anyMissingCostData;
-
-  const hasCommissionsConfigured =
-    services.length > 0 &&
-    services.every(
-      (s) =>
-        s.commission_percentage !== undefined && s.commission_percentage !== null
-    ) &&
-    !anyMissingCostData;
+  // Modelo de reserva (tarea 3.27): no hay comisiones ni costos de insumos por
+  // servicio que configurar; la reserva vale 0 si el servicio no la tiene.
+  const hasDirectCostsConfigured = !anyMissingCostData;
+  const hasCommissionsConfigured = true;
 
   const operatingExpensesAvailable =
     context.operatingExpensesSourceAvailable ?? true;

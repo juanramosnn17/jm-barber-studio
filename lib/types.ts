@@ -74,6 +74,7 @@ export interface Service {
   price: number; // Precio en la moneda configurada (sin decimales para COP)
   direct_cost?: number; // Costo directo de insumos por servicio (COP)
   commission_percentage?: number; // % de comisión para el barbero sobre el servicio (0-100)
+  reserve_amount?: number; // Reserva fija para gastos del negocio por servicio (COP, tarea 3.27)
   duration_label: string; // Texto de duración (p. ej. "35-40 min")
   duration_minutes: number; // Duración máxima en minutos (para calcular agenda)
   image_url: string | null; // Ruta de la imagen (p. ej. "/images/servicios/corte.jpg")
@@ -104,6 +105,7 @@ export interface Appointment {
   tip_amount?: number;
   direct_cost_amount?: number | null;
   commission_amount?: number | null;
+  reserve_amount?: number | null; // Reserva fijada al completar la cita (tarea 3.27)
   paid_at?: string | null;
   created_at?: string;
 }

@@ -132,16 +132,11 @@ export default function ProfitSummaryCards({
     },
     {
       id: "direct-costs",
-      title: "5. Costos Directos",
+      title: "5. Reserva del negocio",
       value: formatAccountingCurrency(summary.directCosts, currency),
-      badge: "Costo variable",
-      formula: `Insumos (${formatAccountingCurrency(
-        summary.supplyCosts,
-        currency
-      )}) + Comisiones barberos (${formatAccountingCurrency(
-        summary.commissions,
-        currency
-      )}).`,
+      badge: "Para gastos",
+      formula:
+        "Suma de la reserva fija de cada servicio cobrado (se define en Servicios). Sin comisiones.",
       comparison: renderComparisonBadge(comparison.directCosts, {
         isExpenseOrDeduction: true,
       }),
@@ -149,10 +144,10 @@ export default function ProfitSummaryCards({
     },
     {
       id: "gross-profit",
-      title: "6. Ganancia Bruta",
+      title: "6. Tu ganancia",
       value: formatAccountingCurrency(summary.grossProfit, currency),
-      badge: "Resultado bruto",
-      formula: "Ingresos netos − Costos directos.",
+      badge: "Para ti",
+      formula: "Ingresos netos − Reserva del negocio.",
       comparison: renderComparisonBadge(comparison.grossProfit),
       highlight: true,
     },
@@ -170,14 +165,14 @@ export default function ProfitSummaryCards({
     },
     {
       id: "net-profit",
-      title: "8. Ganancia Neta",
-      value:
-        summary.netProfit !== null
-          ? formatAccountingCurrency(summary.netProfit, currency)
-          : `${formatAccountingCurrency(summary.partialNetProfit, currency)} (Parcial)`,
-      badge: completeness.isComplete ? "Resultado neto" : "Dato parcial",
-      formula: "Ganancia bruta − Gastos operativos.",
-      comparison: renderComparisonBadge(comparison.netProfit),
+      title: "8. Saldo de la reserva",
+      value: formatAccountingCurrency(
+        Number(summary.directCosts) - Number(summary.operatingExpenses),
+        currency
+      ),
+      badge: completeness.isComplete ? "Reserva − Gastos" : "Dato parcial",
+      formula: "Reserva del negocio − Gastos. Si es negativo, la reserva no alcanzó.",
+      comparison: null,
       highlight: true,
       isPrimaryNet: true,
     },

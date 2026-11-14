@@ -22,6 +22,7 @@ import type { Service } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
 import { createServiceAction, toggleServiceActiveAction } from "@/lib/actions";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import ServiceReserveField from "@/components/admin/ServiceReserveField";
 
 interface ServicesManagerProps {
   initialServices: Service[];
@@ -176,6 +177,11 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
                 <span className="font-body-sm text-on-surface-variant">
                   {formatPrice(srv.price)} • {srv.duration_label}
                 </span>
+                <ServiceReserveField
+                  serviceId={srv.id}
+                  serviceName={srv.name}
+                  initialAmount={Number(srv.reserve_amount ?? 0)}
+                />
               </div>
             </div>
 
@@ -190,6 +196,7 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
                   checked={srv.is_active}
                   onChange={() => handleToggle(srv.id)}
                   disabled={isPending}
+                  aria-label={`${srv.is_active ? "Ocultar" : "Mostrar"} el servicio ${srv.name}`}
                   className="sr-only peer"
                 />
                 <div className="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-on-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-primary after:border-surface-variant after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>

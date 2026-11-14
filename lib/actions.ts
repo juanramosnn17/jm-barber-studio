@@ -48,6 +48,7 @@ import {
   voidStoredExpense,
   deleteStoredExpense,
   updateStoredAppointmentPayment,
+  updateStoredServiceReserve,
 } from "@/lib/data/store";
 import type {
   ActionResult,
@@ -371,6 +372,15 @@ export async function updateAppointmentStatusAction(
       updatePayload.payment_status = "pagado";
       updatePayload.payment_method = "efectivo";
       updatePayload.paid_at = new Date().toISOString();
+      // Fijar la reserva del servicio en la cita (tarea 3.27); sin comisión
+      const { data: appRow } = await supabase
+        .from("appointments")
+        .select("service:services(reserve_amount)")
+        .eq("id", appointmentId)
+        .maybeSingle();
+      const svc = appRow?.service as unknown as { reserve_amount: number | string } | null;
+      updatePayload.reserve_amount = Number(svc?.reserve_amount ?? 0);
+      updatePayload.commission_amount = 0;
     } else if (newStatus === "cancelada") {
       updatePayload.payment_status = "anulado";
     }
@@ -870,4 +880,51 @@ export async function adjustAppointmentPaymentAction(
 
   revalidatePath(ACCOUNTING_PATH);
   return { ok: true, message: "Pago de la cita ajustado correctamente." };
+}
+
+/**
+ * Definir la reserva fija de un servicio para gastos del negocio (tarea 3.27).
+ * Solo afecta citas que se completen desde ahora; el historial conserva su reserva.
+ */
+export async function updateServiceReserveAction(
+  serviceId: string,
+  amount: number
+): Promise<ActionResult> {
+  if (!(await requireRole(["admin"]))) return { ok: false, message: FORBIDDEN_MESSAGE };
+  const value = Math.round(Number(amount));
+  if (!Number.isFinite(value) || value < 0) {
+    return { ok: false, message: "La reserva debe ser un monto igual o mayor a cero." };
+  }
+
+  if (isSupabaseConfigured()) {
+    const supabase = await createClient();
+    const { data: srv, error: readError } = await supabase
+      .from("services")
+      .select("price")
+      .eq("id", serviceId)
+      .maybeSingle();
+    if (readError || !srv) return supabaseFailure("Error leyendo servicio en Supabase", readError?.message);
+    if (value > Number(srv.price)) {
+      return { ok: false, message: "La reserva no puede superar el precio del servicio." };
+    }
+    const { data, error } = await supabase
+      .from("services")
+      .update({ reserve_amount: value })
+      .eq("id", serviceId)
+      .select("id");
+    if (error || !data?.length) {
+      return supabaseFailure("Error guardando la reserva en Supabase", error?.message);
+    }
+  } else {
+    const srv = getStoredServices().find((s) => s.id === serviceId);
+    if (!srv) return { ok: false, message: "No se encontró el servicio." };
+    if (value > srv.price) {
+      return { ok: false, message: "La reserva no puede superar el precio del servicio." };
+    }
+    updateStoredServiceReserve(serviceId, value);
+  }
+
+  revalidatePath("/admin/servicios");
+  revalidatePath(ACCOUNTING_PATH);
+  return { ok: true, message: "Reserva actualizada." };
 }

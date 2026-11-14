@@ -172,6 +172,14 @@ export function getStoredServices(onlyActive = false): Service[] {
   return onlyActive ? list.filter((s) => s.is_active) : list;
 }
 
+/** Define la reserva fija de un servicio (modo demo, tarea 3.27). */
+export function updateStoredServiceReserve(serviceId: string, amount: number): Service | null {
+  const srv = store.services.find((s) => s.id === serviceId);
+  if (!srv) return null;
+  srv.reserve_amount = amount;
+  return srv;
+}
+
 export function toggleStoredServiceActive(serviceId: string): Service | null {
   const srv = store.services.find((s) => s.id === serviceId);
   if (!srv) return null;
@@ -294,16 +302,14 @@ export function updateStoredAppointmentStatus(
 
   const srv = store.services.find((s) => s.id === app.service_id);
   const defaultGross = app.gross_amount ?? srv?.price ?? 0;
-  const defaultDirectCost = app.direct_cost_amount ?? srv?.direct_cost ?? 0;
-  const commissionPct = srv?.commission_percentage ?? 40;
 
   if (newStatus === "completada" && (!app.payment_status || app.payment_status === "pendiente")) {
     app.payment_status = "pagado";
     app.payment_method = paymentMethod ?? app.payment_method ?? "efectivo";
     app.gross_amount = defaultGross;
-    app.direct_cost_amount = defaultDirectCost;
-    app.commission_amount =
-      app.commission_amount ?? Math.round((defaultGross * commissionPct) / 100);
+    // Modelo de reserva (tarea 3.27): sin comisión; se fija la reserva del servicio
+    app.reserve_amount = srv?.reserve_amount ?? 0;
+    app.commission_amount = 0;
     app.paid_at = new Date().toISOString();
   } else if (newStatus === "cancelada" && app.payment_status === "pendiente") {
     app.payment_status = "anulado";

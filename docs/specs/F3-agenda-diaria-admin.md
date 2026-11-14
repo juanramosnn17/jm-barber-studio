@@ -14,6 +14,7 @@ Como administrador o barbero del estudio, quiero visualizar todas las citas del 
 - [ ] En `/admin` se muestran los 4 contadores superiores (Citas Totales, Confirmadas, Pendientes y Completadas) coincidiendo exactamente con las citas listadas en la jornada.
 - [ ] Al cambiar el estado de una cita a `completada`, el contador de "Completadas" sube en 1 y la etiqueta de estado de esa cita cambia a completada.
 - [ ] Al cancelar una cita desde el panel administrativo, el bloque horario de esa cita vuelve a quedar disponible para nuevas reservas en `/cliente`.
+- [ ] Un `admin` o `barbero` que entra a "Vista de Cliente" (`/cliente`) ve en el encabezado un botón **"Volver al panel"** que lo lleva a `/admin`, y la opción "Panel Principal" de su menú también apunta a `/admin`. *(Agregado tras reporte del estudiante: desde la vista de cliente no había cómo regresar.)*
 
 ### Criterios con Supabase conectado [Back]
 - [ ] [Back] Una cita reservada por un cliente aparece en `/admin` al iniciar sesión como admin o barbero en otro navegador.

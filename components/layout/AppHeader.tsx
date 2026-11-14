@@ -16,6 +16,9 @@ interface AppHeaderProps {
 export default function AppHeader({ user, currentRole = "cliente" }: AppHeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const fullName = user ? `${user.first_name} ${user.last_name}`.trim() : "Invitado";
+  // El staff (admin/barbero) puede ver /cliente, pero su panel principal es /admin (spec F3)
+  const isStaff = user?.role === "admin" || user?.role === "barbero";
+  const homeHref = isStaff ? "/admin" : "/cliente";
 
   return (
     <header className="fixed top-0 inset-x-0 z-50 bg-surface/95 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
@@ -35,6 +38,19 @@ export default function AppHeader({ user, currentRole = "cliente" }: AppHeaderPr
             >
               <span className="material-symbols-outlined text-[16px] text-secondary">visibility</span>
               <span>Vista de Cliente</span>
+            </Link>
+          )}
+
+          {/* Si el staff está en la vista de cliente, enlace para volver al panel */}
+          {currentRole === "cliente" && isStaff && (
+            <Link
+              href="/admin"
+              className="flex items-center gap-1.5 px-3 h-11 rounded-full bg-primary text-on-primary hover:bg-neutral-800 transition-all font-label-md text-label-md"
+            >
+              <span className="material-symbols-outlined text-[16px] text-secondary-fixed" aria-hidden="true">
+                arrow_back
+              </span>
+              <span>Volver al panel</span>
             </Link>
           )}
 
@@ -95,7 +111,7 @@ export default function AppHeader({ user, currentRole = "cliente" }: AppHeaderPr
                   </div>
 
                   <Link
-                    href={currentRole === "admin" ? "/admin" : "/cliente"}
+                    href={homeHref}
                     className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-on-surface hover:bg-surface-container font-label-md transition-colors"
                     onClick={() => setDropdownOpen(false)}
                   >

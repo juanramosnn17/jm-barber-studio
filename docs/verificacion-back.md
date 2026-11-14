@@ -23,10 +23,10 @@ Leyenda: ✅ cumple · ❌ no cumple · ⏳ pendiente.
 | 7 | F2 | El turno de A no aparece disponible para B | B abre la misma fecha | ⏳ |
 | 8 | F2 | Dos clientes al mismo turno: solo uno queda | Probado en la base (error 23505) en el paso 6 | ✅ (base) |
 | 9 | F2 | Un cliente no ve citas de otro | B revisa `/cliente` | ⏳ |
-| 10 | F3 | La cita de A aparece en `/admin` del admin | Admin abre `/admin` el día de la cita | ⏳ |
-| 11 | F3 | El cambio de estado se conserva | Admin completa la cita y recarga | ⏳ |
+| 10 | F3 | La cita de A aparece en `/admin` del admin | Admin abre `/admin` el día de la cita | ✅ el barbero ve en `/admin` las 3 citas de hoy con el nombre de cada cliente |
+| 11 | F3 | El cambio de estado se conserva | Admin completa la cita y recarga | ✅ las citas de hoy 09:00 y 17:00 se marcaron `completada` (pago `pagado`) a las 13:00 y siguen así en la base tras recargas y 2 despliegues |
 | 12 | F4 | Cambios de horario/servicios/roles sobreviven a un despliegue | Revisar después del siguiente push | ⏳ |
-| 13 | F4 | Usuario promovido a `barbero` entra a `/admin` | Admin cambia A a barbero; A vuelve a entrar | ⏳ |
+| 13 | F4 | Usuario promovido a `barbero` entra a `/admin` | Admin cambia A a barbero; A vuelve a entrar | ✅ `juanramosnn17` pasó a barbero desde `/admin/usuarios` y al volver a entrar llegó a `/admin` (solo "Citas" en el menú; `/admin/usuarios` lo devuelve a `/admin`) |
 | 14 | F4 | Usuario eliminado desaparece y no puede entrar | Admin elimina a B; B intenta entrar | ⏳ |
 | 15 | F4 | Si Supabase rechaza un cambio, se ve un error | Probado en el paso 7 (borrado bloqueado por RLS) | ✅ (local) |
 | 16 | F4 | Un cliente no puede ejecutar acciones de admin | B (cliente) abre `/admin/horarios` | ⏳ |

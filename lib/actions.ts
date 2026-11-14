@@ -549,8 +549,12 @@ export async function updateUserAction(
     role: "cliente" | "barbero" | "admin";
   }
 ): Promise<ActionResult> {
-  if (!(await requireRole(["admin"]))) {
+  const admin = await requireRole(["admin"]);
+  if (!admin) {
     return { ok: false, message: FORBIDDEN_MESSAGE };
+  }
+  if (userId === admin.id && data.role !== "admin") {
+    return { ok: false, message: "No puedes quitarte a ti mismo el rol de administrador." };
   }
   if (!userId || !data.first_name || !data.email) {
     return { ok: false, message: "Nombre y correo son obligatorios." };
@@ -594,9 +598,15 @@ export async function deleteUserAction(userId: string): Promise<ActionResult> {
 
   if (isSupabaseConfigured()) {
     const supabase = await createClient();
-    const { data, error } = await supabase.from("profiles").delete().eq("id", userId).select("id");
-    if (error || !data?.length) {
-      return supabaseFailure("Error eliminando perfil en Supabase", error?.message);
+    // delete_user borra la cuenta en auth.users (y en cascada su perfil). Tarea 3.11.
+    const { error } = await supabase.rpc("delete_user", { p_user_id: userId });
+    if (error) {
+      console.error("Error eliminando usuario en Supabase:", error.message);
+      const message =
+        error.message.includes("propia cuenta")
+          ? "No puedes eliminar tu propia cuenta."
+          : SAVE_ERROR_MESSAGE;
+      return { ok: false, message };
     }
     revalidatePath("/admin");
     revalidatePath("/admin/usuarios");

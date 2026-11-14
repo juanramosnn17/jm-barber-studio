@@ -60,6 +60,41 @@ create policy "Los usuarios pueden editar su propio perfil"
   using (auth.uid() = id)
   with check (auth.uid() = id and role = public.get_my_role());
 
+-- 1.2 GESTIÓN DE USUARIOS POR EL ADMIN (tarea 3.11)
+-- El admin puede editar cualquier perfil (datos y rol) desde /admin/usuarios.
+drop policy if exists "Administradores pueden editar cualquier perfil" on public.profiles;
+create policy "Administradores pueden editar cualquier perfil"
+  on public.profiles for update
+  using (public.is_admin())
+  with check (public.is_admin());
+
+-- Borrado de usuarios: elimina la cuenta en auth.users (y en cascada su perfil).
+-- Solo admin, y nunca su propia cuenta (evita quedarse sin administrador).
+-- Nota: appointments.client_id es "on delete cascade", así que también se
+-- borran las citas de ese cliente.
+create or replace function public.delete_user(p_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Solo un administrador puede eliminar usuarios' using errcode = '42501';
+  end if;
+  if p_user_id = auth.uid() then
+    raise exception 'No puedes eliminar tu propia cuenta' using errcode = '42501';
+  end if;
+  delete from auth.users where id = p_user_id;
+  if not found then
+    raise exception 'Usuario no encontrado' using errcode = 'P0002';
+  end if;
+end;
+$$;
+
+revoke execute on function public.delete_user(uuid) from public, anon;
+grant execute on function public.delete_user(uuid) to authenticated;
+
 -- 2. TABLA: services (Catálogo de servicios de la barbería)
 create table if not exists public.services (
   id uuid default gen_random_uuid() primary key,

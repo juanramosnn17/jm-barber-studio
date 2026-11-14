@@ -251,6 +251,10 @@ create table if not exists public.expenses (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- Auditoría de anulaciones (tarea 3.23): el gasto anulado se conserva con su motivo.
+alter table public.expenses add column if not exists void_reason text;
+alter table public.expenses add column if not exists voided_at timestamp with time zone;
+
 alter table public.expenses enable row level security;
 
 drop policy if exists "Solo administradores pueden consultar y gestionar gastos operativos" on public.expenses;

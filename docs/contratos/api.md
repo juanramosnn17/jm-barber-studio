@@ -57,6 +57,10 @@ Regla de negocio (spec F2): **una sola cita no cancelada por `(date, time)`**, g
 | `updateUserAction` | `userId`, `{ first_name, last_name, email, phone?, role }` | Actualiza perfil y rol | — | admin |
 | `deleteUserAction` | `userId` | Elimina el usuario (Auth + `profiles`, tarea 3.11) | — | admin |
 | `createExpenseAction` | FormData: `date`, `category`, `concept`, `amount`, `payment_method`, `reference?` | Inserta gasto `registrado` | rechazo si no es admin | admin |
+| `voidExpenseAction` | `expenseId`, `reason` | `status = 'anulado'`, guarda `void_reason` y `voided_at`; deja de sumar | `"Escribe el motivo de la anulación."` · `"Este gasto ya está anulado."` | admin |
+| `updateExpenseAction` | `expenseId`, `{ date, time?, category, concept, amount, payment_method, reference? }` | Corrige un gasto **registrado** | `"Por favor ingresa fecha, concepto y un importe mayor a cero."` · `"Un gasto anulado no se puede editar."` | admin |
+| `deleteExpenseAction` | `expenseId` | Borra el gasto definitivamente (sin rastro) | — | admin |
+| `adjustAppointmentPaymentAction` | `appointmentId`, `{ payment_method, discount_amount, refund_amount }` | Solo citas `completada`: actualiza método, descuento y reembolso; `payment_status = 'reembolsado'` si hay reembolso, si no `'pagado'` | `"El descuento y el reembolso no pueden superar el valor del servicio."` · `"Solo se puede ajustar el pago de una cita completada."` | admin |
 
 **Validación de rol (tarea 3.13):** cada acción revisa en el servidor, antes de escribir, el rol del usuario actual (`getCurrentProfile()`, en ambos modos) según la columna "Rol". Si no corresponde, responde `{ ok: false, message: "No tienes permisos para realizar esta acción." }` sin tocar datos. RLS sigue siendo la última barrera en Supabase.
 

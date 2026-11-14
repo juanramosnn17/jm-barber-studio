@@ -373,3 +373,36 @@ export function addStoredExpense(
   store.expenses.unshift(expense);
   return expense;
 }
+
+/** Busca un gasto por id (modo demo). */
+export function findStoredExpense(expenseId: string): Expense | null {
+  return (store.expenses ?? []).find((e) => e.id === expenseId) ?? null;
+}
+
+/** Corrige un gasto registrado (modo demo, tarea 3.24). */
+export function updateStoredExpense(
+  expenseId: string,
+  data: Partial<Omit<Expense, "id" | "created_at" | "status">>
+): Expense | null {
+  const exp = findStoredExpense(expenseId);
+  if (!exp) return null;
+  Object.assign(exp, data);
+  return exp;
+}
+
+/** Anula un gasto conservando su rastro (modo demo, tarea 3.23). */
+export function voidStoredExpense(expenseId: string, reason: string): Expense | null {
+  const exp = findStoredExpense(expenseId);
+  if (!exp) return null;
+  exp.status = "anulado";
+  exp.void_reason = reason;
+  exp.voided_at = new Date().toISOString();
+  return exp;
+}
+
+/** Elimina un gasto definitivamente (modo demo, tarea 3.25). */
+export function deleteStoredExpense(expenseId: string): boolean {
+  const before = store.expenses?.length ?? 0;
+  store.expenses = (store.expenses ?? []).filter((e) => e.id !== expenseId);
+  return store.expenses.length < before;
+}

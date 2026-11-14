@@ -1171,6 +1171,8 @@ export function buildAccountingTransactionRows(
       status: payStatus,
       statusLabel: `${app.status.toUpperCase()} / ${PAYMENT_STATUS_LABELS[payStatus]}`,
       isCountedInTotals: r.isCounted,
+      source: "appointment",
+      appointmentStatus: app.status,
     });
   }
 
@@ -1203,6 +1205,12 @@ export function buildAccountingTransactionRows(
       status: exp.status,
       statusLabel: exp.status === "registrado" ? "Registrado" : "Anulado",
       isCountedInTotals: isCounted,
+      source: "expense",
+      expenseCategory: exp.category,
+      expenseAmount: centsToDecimalString(toCents(exp.amount)),
+      expenseReference: exp.reference,
+      voidReason: exp.void_reason ?? null,
+      voidedAt: exp.voided_at ?? null,
     });
   }
 

@@ -130,6 +130,9 @@ export interface Expense {
   status: ExpenseStatus;
   reference: string | null;
   notes: string | null;
+  /** Motivo y fecha de anulación (tarea 3.23). */
+  void_reason?: string | null;
+  voided_at?: string | null;
   created_at?: string;
 }
 

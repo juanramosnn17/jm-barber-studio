@@ -8,6 +8,7 @@
 import { useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatAccountingCurrency } from "@/lib/accounting/profit-report.calculations";
+import AccountingAdjustments from "@/components/accounting/AccountingAdjustments";
 import type {
   AccountingTransactionRow,
   PaginatedTransactions,
@@ -471,6 +472,13 @@ export default function AccountingTransactionsTable({
                 </dd>
               </div>
             </dl>
+
+            {/* Ajustes contables del admin (spec F5, tareas 3.23–3.26) */}
+            <AccountingAdjustments
+              key={selectedRow.id}
+              row={selectedRow}
+              onDone={closeDetailModal}
+            />
 
             <div className="flex justify-end pt-2">
               <button

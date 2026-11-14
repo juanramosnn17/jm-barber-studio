@@ -64,6 +64,8 @@ type SupabaseExpenseRow = {
   status: ExpenseStatus;
   reference: string | null;
   notes: string | null;
+  void_reason?: string | null;
+  voided_at?: string | null;
   created_at?: string;
 };
 
@@ -141,6 +143,8 @@ function mapExpenseRow(row: SupabaseExpenseRow): Expense {
     status: row.status,
     reference: row.reference,
     notes: row.notes,
+    void_reason: row.void_reason ?? null,
+    voided_at: row.voided_at ?? null,
     created_at: row.created_at,
   };
 }

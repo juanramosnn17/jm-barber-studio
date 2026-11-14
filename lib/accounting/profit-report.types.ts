@@ -226,6 +226,14 @@ export interface AccountingTransactionRow {
   status: string;
   statusLabel: string;
   isCountedInTotals: boolean;
+  /** Datos para los ajustes contables del comprobante (spec F5, tareas 3.23–3.26). */
+  source: "appointment" | "expense";
+  appointmentStatus?: string;
+  expenseCategory?: string;
+  expenseAmount?: string;
+  expenseReference?: string | null;
+  voidReason?: string | null;
+  voidedAt?: string | null;
 }
 
 export interface PaginatedTransactions {

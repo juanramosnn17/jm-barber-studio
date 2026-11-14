@@ -43,6 +43,11 @@ import {
   getStoredServices,
   updateStoredUser,
   deleteStoredUser,
+  findStoredExpense,
+  updateStoredExpense,
+  voidStoredExpense,
+  deleteStoredExpense,
+  updateStoredAppointmentPayment,
 } from "@/lib/data/store";
 import type {
   ActionResult,
@@ -692,4 +697,177 @@ export async function createExpenseAction(
 
   revalidatePath("/admin/contabilidad/ganancias");
   return { ok: true, message: "Gasto operativo registrado correctamente." };
+}
+
+/* ---------------------------------------------------------------------
+   AJUSTES CONTABLES (spec F5, tareas 3.23–3.26) · solo admin
+   --------------------------------------------------------------------- */
+
+const ACCOUNTING_PATH = "/admin/contabilidad/ganancias";
+
+/**
+ * Anular un gasto: deja de sumar pero se conserva con su motivo (tarea 3.23).
+ */
+export async function voidExpenseAction(expenseId: string, reason: string): Promise<ActionResult> {
+  if (!(await requireRole(["admin"]))) return { ok: false, message: FORBIDDEN_MESSAGE };
+  const cleanReason = (reason ?? "").trim();
+  if (!cleanReason) return { ok: false, message: "Escribe el motivo de la anulación." };
+
+  if (isSupabaseConfigured()) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("expenses")
+      .update({ status: "anulado", void_reason: cleanReason, voided_at: new Date().toISOString() })
+      .eq("id", expenseId)
+      .eq("status", "registrado")
+      .select("id");
+    if (error) return supabaseFailure("Error anulando gasto en Supabase", error.message);
+    if (!data?.length) return { ok: false, message: "Este gasto ya está anulado." };
+  } else {
+    const exp = findStoredExpense(expenseId);
+    if (!exp) return { ok: false, message: "No se encontró el gasto." };
+    if (exp.status === "anulado") return { ok: false, message: "Este gasto ya está anulado." };
+    voidStoredExpense(expenseId, cleanReason);
+  }
+
+  revalidatePath(ACCOUNTING_PATH);
+  return { ok: true, message: "Gasto anulado. Ya no suma en los totales." };
+}
+
+/**
+ * Editar un gasto registrado (tarea 3.24). Un gasto anulado no se edita.
+ */
+export async function updateExpenseAction(
+  expenseId: string,
+  input: {
+    date: string;
+    time?: string;
+    category: ExpenseCategory;
+    concept: string;
+    amount: number;
+    payment_method: PaymentMethod;
+    reference?: string | null;
+  }
+): Promise<ActionResult> {
+  if (!(await requireRole(["admin"]))) return { ok: false, message: FORBIDDEN_MESSAGE };
+
+  const date = (input.date ?? "").trim();
+  const concept = (input.concept ?? "").trim();
+  const amount = Number(input.amount);
+  if (!date || !concept || !Number.isFinite(amount) || amount <= 0) {
+    return { ok: false, message: "Por favor ingresa fecha, concepto y un importe mayor a cero." };
+  }
+  const changes = {
+    date,
+    time: (input.time ?? "").trim() || "12:00",
+    category: input.category,
+    concept,
+    amount: Math.round(amount),
+    payment_method: input.payment_method,
+    reference: (input.reference ?? "").trim() || null,
+  };
+
+  if (isSupabaseConfigured()) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("expenses")
+      .update(changes)
+      .eq("id", expenseId)
+      .eq("status", "registrado")
+      .select("id");
+    if (error) return supabaseFailure("Error editando gasto en Supabase", error.message);
+    if (!data?.length) return { ok: false, message: "Un gasto anulado no se puede editar." };
+  } else {
+    const exp = findStoredExpense(expenseId);
+    if (!exp) return { ok: false, message: "No se encontró el gasto." };
+    if (exp.status === "anulado") return { ok: false, message: "Un gasto anulado no se puede editar." };
+    updateStoredExpense(expenseId, changes);
+  }
+
+  revalidatePath(ACCOUNTING_PATH);
+  return { ok: true, message: "Gasto actualizado correctamente." };
+}
+
+/**
+ * Eliminar un gasto definitivamente, sin rastro (tarea 3.25).
+ */
+export async function deleteExpenseAction(expenseId: string): Promise<ActionResult> {
+  if (!(await requireRole(["admin"]))) return { ok: false, message: FORBIDDEN_MESSAGE };
+
+  if (isSupabaseConfigured()) {
+    const supabase = await createClient();
+    const { data, error } = await supabase.from("expenses").delete().eq("id", expenseId).select("id");
+    if (error || !data?.length) {
+      return supabaseFailure("Error eliminando gasto en Supabase", error?.message);
+    }
+  } else if (!deleteStoredExpense(expenseId)) {
+    return { ok: false, message: "No se encontró el gasto." };
+  }
+
+  revalidatePath(ACCOUNTING_PATH);
+  return { ok: true, message: "Gasto eliminado definitivamente." };
+}
+
+/**
+ * Ajustar el pago de una cita completada: método, descuento y reembolso (tarea 3.26).
+ */
+export async function adjustAppointmentPaymentAction(
+  appointmentId: string,
+  input: { payment_method: PaymentMethod; discount_amount: number; refund_amount: number }
+): Promise<ActionResult> {
+  if (!(await requireRole(["admin"]))) return { ok: false, message: FORBIDDEN_MESSAGE };
+
+  const discount = Math.round(Number(input.discount_amount) || 0);
+  const refund = Math.round(Number(input.refund_amount) || 0);
+  if (discount < 0 || refund < 0) {
+    return { ok: false, message: "El descuento y el reembolso no pueden ser negativos." };
+  }
+  const paymentStatus = refund > 0 ? "reembolsado" : "pagado";
+  const tooMuch = "El descuento y el reembolso no pueden superar el valor del servicio.";
+  const notCompleted = "Solo se puede ajustar el pago de una cita completada.";
+
+  if (isSupabaseConfigured()) {
+    const supabase = await createClient();
+    const { data: app, error: readError } = await supabase
+      .from("appointments")
+      .select("status, gross_amount, service:services(price)")
+      .eq("id", appointmentId)
+      .maybeSingle();
+    if (readError || !app) return supabaseFailure("Error leyendo la cita en Supabase", readError?.message);
+    if (app.status !== "completada") return { ok: false, message: notCompleted };
+    const service = app.service as unknown as { price: number | string } | null;
+    const price = Number(app.gross_amount ?? service?.price ?? 0);
+    if (discount + refund > price) return { ok: false, message: tooMuch };
+
+    const { data, error } = await supabase
+      .from("appointments")
+      .update({
+        payment_method: input.payment_method,
+        discount_amount: discount,
+        refund_amount: refund,
+        payment_status: paymentStatus,
+      })
+      .eq("id", appointmentId)
+      .select("id");
+    if (error || !data?.length) {
+      return supabaseFailure("Error ajustando el pago en Supabase", error?.message);
+    }
+  } else {
+    const app = getAllStoredAppointments().find((a) => a.id === appointmentId);
+    if (!app) return { ok: false, message: "No se encontró la cita." };
+    if (app.status !== "completada") return { ok: false, message: notCompleted };
+    const price = Number(
+      app.gross_amount ?? getStoredServices().find((s) => s.id === app.service_id)?.price ?? 0
+    );
+    if (discount + refund > price) return { ok: false, message: tooMuch };
+    updateStoredAppointmentPayment(appointmentId, {
+      payment_status: paymentStatus,
+      payment_method: input.payment_method,
+      discount_amount: discount,
+      refund_amount: refund,
+    });
+  }
+
+  revalidatePath(ACCOUNTING_PATH);
+  return { ok: true, message: "Pago de la cita ajustado correctamente." };
 }

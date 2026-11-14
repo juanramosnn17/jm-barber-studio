@@ -92,7 +92,9 @@ export async function loginAction(
   const emailOrPhone = formData.get("identifier") as string;
   const password = formData.get("password") as string;
   const returnUrl = formData.get("return_url") as string | null;
-  const safeReturnUrl = returnUrl && returnUrl.startsWith("/") ? returnUrl : null;
+  // Solo destinos internos: empieza con "/" y no con "//" (evita redirigir a otro sitio)
+  const safeReturnUrl =
+    returnUrl && returnUrl.startsWith("/") && !returnUrl.startsWith("//") ? returnUrl : null;
 
   if (!emailOrPhone || !password) {
     return { ok: false, message: "Por favor ingresa correo o teléfono y tu contraseña." };
@@ -135,8 +137,8 @@ export async function loginAction(
   // Establecer sesión en cookie
   await setSessionUser(localUser.id);
 
-  if (returnUrl && (returnUrl.startsWith("/") || returnUrl.startsWith("#"))) {
-    redirect(returnUrl);
+  if (safeReturnUrl) {
+    redirect(safeReturnUrl);
   }
 
   if (localUser.role === "admin" || localUser.role === "barbero") {

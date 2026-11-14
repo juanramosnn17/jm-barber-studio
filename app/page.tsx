@@ -5,6 +5,18 @@ import Footer from "@/components/layout/Footer";
 import { getServices } from "@/lib/data/queries";
 import { formatPrice } from "@/lib/format";
 
+/**
+ * Enlace para reservar: pasa por /login y vuelve a /cliente con el servicio elegido
+ * preseleccionado y el asistente a la vista. return_url va codificado completo para
+ * que ?serviceId y #booking-flow no se pierdan ni se conviertan en un 404.
+ */
+function bookingHref(serviceId?: string): string {
+  const destination = serviceId
+    ? `/cliente?serviceId=${encodeURIComponent(serviceId)}#booking-flow`
+    : "/cliente#booking-flow";
+  return `/login?return_url=${encodeURIComponent(destination)}`;
+}
+
 export default async function HomePage() {
   const services = await getServices({ onlyActive: true });
 
@@ -52,7 +64,7 @@ export default async function HomePage() {
                 </h2>
               </div>
               <Link
-                href="/login?return_url=/cliente%23booking-flow"
+                href={bookingHref()}
                 className="font-label-md text-secondary hover:underline flex items-center gap-1"
               >
                 <span>Ver agenda</span>
@@ -67,7 +79,7 @@ export default async function HomePage() {
                   className="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm border border-surface-container-high/60 flex flex-col hover:shadow-md transition-shadow group"
                 >
                   <Link
-                    href={`/login?return_url=/cliente%23booking-flow&serviceId=${service.id}`}
+                    href={bookingHref(service.id)}
                     className="h-48 relative bg-surface-container-high block overflow-hidden"
                   >
                     {service.image_url ? (
@@ -75,6 +87,7 @@ export default async function HomePage() {
                         src={service.image_url}
                         alt={service.name}
                         fill
+                        sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
@@ -89,7 +102,7 @@ export default async function HomePage() {
                     <div>
                       <div className="flex items-start justify-between gap-2">
                         <Link
-                          href={`/login?return_url=/cliente%23booking-flow&serviceId=${service.id}`}
+                          href={bookingHref(service.id)}
                           className="font-title-lg font-bold text-on-surface hover:text-secondary transition-colors"
                         >
                           {service.name}
@@ -111,7 +124,7 @@ export default async function HomePage() {
                         {service.duration_label}
                       </span>
                       <Link
-                        href={`/login?return_url=/cliente%23booking-flow&serviceId=${service.id}`}
+                        href={bookingHref(service.id)}
                         className="px-3.5 py-1.5 rounded-full bg-surface-container-low text-on-surface font-label-md hover:bg-primary hover:text-on-primary transition-colors text-xs font-semibold"
                       >
                         Reservar

@@ -129,10 +129,17 @@ export async function updateSession(request: NextRequest) {
     const returnUrl =
       request.nextUrl.searchParams.get("return_url") ||
       request.nextUrl.searchParams.get("next");
+    // Destino interno seguro: debe empezar con "/" y no con "//" (evita redirigir a otro sitio).
+    // Se interpreta como URL completa para conservar ?serviceId y #booking-flow; si se
+    // asignara a pathname, el "#" se codificaría como %23 y daría 404.
+    if (returnUrl && returnUrl.startsWith("/") && !returnUrl.startsWith("//")) {
+      const target = new URL(returnUrl, request.nextUrl.origin);
+      if (target.origin === request.nextUrl.origin) {
+        return redirectWithCookies(target, response);
+      }
+    }
     const url = request.nextUrl.clone();
-    if (returnUrl && returnUrl.startsWith("/")) {
-      url.pathname = returnUrl;
-    } else if (userRole === "admin" || userRole === "barbero") {
+    if (userRole === "admin" || userRole === "barbero") {
       url.pathname = "/admin";
     } else {
       url.pathname = "/cliente";

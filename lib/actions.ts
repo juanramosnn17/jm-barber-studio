@@ -11,6 +11,12 @@
      - Actualización de estado de citas
      - Guardado y actualización de horarios de atención (admin -> cliente)
      - Creación y activación de servicios (admin -> cliente)
+
+   Modo dual (tareas 3.12 y 3.16):
+     - Con Supabase configurado, cada acción escribe SOLO en Supabase y
+       revisa el resultado: si hay error o no se afectó ninguna fila
+       (por ejemplo, porque RLS lo impidió), responde { ok: false }.
+     - Sin Supabase (modo demo), escribe en el store en memoria.
    ===================================================================== */
 
 "use server";
@@ -20,6 +26,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { clearSessionUser, getSessionUserProfile, setSessionUser } from "@/lib/auth/session";
+import { getCurrentProfile } from "@/lib/data/queries";
 import {
   addStoredAppointment,
   addStoredExpense,
@@ -44,6 +51,16 @@ import type {
   Service,
 } from "./types";
 
+const SLOT_TAKEN_MESSAGE = "Este bloque horario ya está ocupado. Por favor elige otro turno.";
+const SAVE_ERROR_MESSAGE =
+  "No se pudo guardar el cambio. Verifica tus permisos o inténtalo de nuevo.";
+
+/** Registra el error de Supabase en el servidor y devuelve un resultado fallido. */
+function supabaseFailure(context: string, detail?: string): ActionResult {
+  console.error(`${context}:`, detail ?? "ninguna fila afectada");
+  return { ok: false, message: SAVE_ERROR_MESSAGE };
+}
+
 /**
  * Iniciar sesión de usuario
  */
@@ -54,50 +71,38 @@ export async function loginAction(
   const emailOrPhone = formData.get("identifier") as string;
   const password = formData.get("password") as string;
   const returnUrl = formData.get("return_url") as string | null;
+  const safeReturnUrl = returnUrl && returnUrl.startsWith("/") ? returnUrl : null;
 
   if (!emailOrPhone || !password) {
     return { ok: false, message: "Por favor ingresa correo o teléfono y tu contraseña." };
   }
 
-  // 1. Si Supabase está configurado, intentar autenticación con Supabase Auth
+  // 1. Con Supabase: solo Supabase Auth (sin respaldo en el store local)
   if (isSupabaseConfigured()) {
-    try {
-      const supabase = await createClient();
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: emailOrPhone,
-        password,
-      });
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: emailOrPhone,
+      password,
+    });
 
-      if (!error && data.user) {
-        // Consultar rol en la tabla profiles
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", data.user.id)
-          .single();
-
-        await setSessionUser(data.user.id);
-
-        if (returnUrl) {
-          redirect(returnUrl);
-        }
-
-        if (profile?.role === "admin" || profile?.role === "barbero") {
-          redirect("/admin");
-        } else {
-          redirect("/cliente");
-        }
-      }
-    } catch (err: unknown) {
-      // Si Next.js lanzó una redirección, dejarla pasar
-      if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) {
-        throw err;
-      }
-      console.warn("Fallo login en Supabase, intentando verificación local...");
+    if (error || !data.user) {
+      return {
+        ok: false,
+        message: "Credenciales incorrectas. Verifica tu correo y contraseña o regístrate si aún no tienes cuenta.",
+      };
     }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", data.user.id)
+      .single();
+
+    if (safeReturnUrl) redirect(safeReturnUrl);
+    redirect(profile?.role === "admin" || profile?.role === "barbero" ? "/admin" : "/cliente");
   }
 
-  // 2. Verificación contra el Store en memoria
+  // 2. Modo demo: verificación contra el Store en memoria
   const localUser = findUserByCredentials(emailOrPhone, password);
   if (!localUser) {
     return {
@@ -143,38 +148,38 @@ export async function registerAction(
     return { ok: false, message: "Las contraseñas no coinciden." };
   }
 
-  // 1. Si Supabase está disponible, registrar en Auth y profiles
+  // 1. Con Supabase: registrar solo en Auth (el trigger crea el perfil como 'cliente')
   if (isSupabaseConfigured()) {
-    try {
-      const supabase = await createClient();
-      const { data: authData, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName || "",
-            phone: phone ? `+57 ${phone.trim()}` : null,
-            role: "cliente",
-            reminders_opt_in: reminders,
-          },
+    const supabase = await createClient();
+    const { data: authData, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          first_name: firstName,
+          last_name: lastName || "",
+          phone: phone ? `+57 ${phone.trim()}` : null,
+          reminders_opt_in: reminders,
         },
-      });
+      },
+    });
 
-      if (error) {
-        return { ok: false, message: error.message };
-      }
-
-      if (authData.user) {
-        await setSessionUser(authData.user.id);
-      }
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) throw err;
-      console.warn("Error en registro Supabase, procediendo a guardar localmente:", err);
+    if (error) {
+      return { ok: false, message: error.message };
     }
+    if (!authData.session) {
+      return {
+        ok: false,
+        message: "Cuenta creada. Revisa tu correo para confirmarla antes de iniciar sesión.",
+      };
+    }
+
+    revalidatePath("/");
+    revalidatePath("/cliente");
+    redirect("/cliente");
   }
 
-  // 2. Registrar en store local
+  // 2. Modo demo: registrar en store local
   try {
     const newUser = registerNewUser({
       first_name: firstName,
@@ -231,52 +236,21 @@ export async function createAppointmentAction(
   }
 
   const normalizedTime = time.trim().slice(0, 5);
-
-  // Validar que no exista cruce de citas (overbooking) en memoria
-  const existingLocal = getStoredAppointments(date).some(
-    (a) => a.time.slice(0, 5) === normalizedTime && a.status !== "cancelada"
-  );
-  if (existingLocal) {
-    return {
-      ok: false,
-      message: "Este bloque horario ya está ocupado. Por favor elige otro turno.",
-    };
-  }
-
-  // Obtener perfil actual
-  const user = await getSessionUserProfile();
-  const clientId = user?.id || "usr-anonimo";
-  const clientName = user ? `${user.first_name} ${user.last_name}`.trim() : "Cliente";
-
-  // Buscar servicio para guardar nombres amigables
-  const allServices = getStoredServices();
-  const srv = allServices.find((s) => s.id === serviceId);
-  const serviceName = srv?.name || "Servicio";
-  const durationLabel = srv?.duration_label || "40 min";
-
   const defaultBarber = "Pendiente de asignación";
   const defaultChair = "No asignado";
 
-  // 1. Guardar en store local para inmediatez (Híbrido Optimista)
-  const newApp = addStoredAppointment({
-    client_id: clientId,
-    client_name: clientName,
-    service_id: serviceId,
-    service_name: serviceName,
-    duration_label: durationLabel,
-    barber_name: defaultBarber,
-    chair: defaultChair,
-    date,
-    time: normalizedTime,
-    notes,
-  });
-
-  // 2. Si Supabase está configurado, replicar en la tabla appointments
+  // 1. Con Supabase: la cita se guarda solo en la base de datos
   if (isSupabaseConfigured()) {
-    try {
-      const supabase = await createClient();
-      await supabase.from("appointments").insert({
-        client_id: clientId,
+    const user = await getCurrentProfile();
+    if (!user) {
+      return { ok: false, message: "Debes iniciar sesión para reservar." };
+    }
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("appointments")
+      .insert({
+        client_id: user.id,
         service_id: serviceId,
         barber_name: defaultBarber,
         chair: defaultChair,
@@ -284,11 +258,52 @@ export async function createAppointmentAction(
         time: normalizedTime,
         status: "confirmada",
         notes: notes || null,
-      });
-    } catch (e) {
-      console.warn("No se pudo replicar cita en Supabase:", e);
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      // 23505 = violación de unicidad (bloque ya ocupado; índice de la tarea 3.4)
+      if (error.code === "23505") return { ok: false, message: SLOT_TAKEN_MESSAGE };
+      console.error("Error al crear la cita en Supabase:", error.message);
+      return { ok: false, message: "No se pudo reservar la cita. Inténtalo de nuevo." };
     }
+
+    revalidatePath("/cliente");
+    revalidatePath("/admin");
+    return {
+      ok: true,
+      message: "¡Tu cita ha sido reservada exitosamente!",
+      appointmentId: data.id,
+    };
   }
+
+  // 2. Modo demo: store en memoria
+  const existingLocal = getStoredAppointments(date).some(
+    (a) => a.time.slice(0, 5) === normalizedTime && a.status !== "cancelada"
+  );
+  if (existingLocal) {
+    return { ok: false, message: SLOT_TAKEN_MESSAGE };
+  }
+
+  const user = await getSessionUserProfile();
+  const clientId = user?.id || "usr-anonimo";
+  const clientName = user ? `${user.first_name} ${user.last_name}`.trim() : "Cliente";
+
+  const srv = getStoredServices().find((s) => s.id === serviceId);
+
+  const newApp = addStoredAppointment({
+    client_id: clientId,
+    client_name: clientName,
+    service_id: serviceId,
+    service_name: srv?.name || "Servicio",
+    duration_label: srv?.duration_label || "40 min",
+    barber_name: defaultBarber,
+    chair: defaultChair,
+    date,
+    time: normalizedTime,
+    notes,
+  });
 
   revalidatePath("/cliente");
   revalidatePath("/admin");
@@ -306,26 +321,26 @@ export async function updateAppointmentStatusAction(
   appointmentId: string,
   newStatus: AppointmentStatus
 ): Promise<ActionResult> {
-  updateStoredAppointmentStatus(appointmentId, newStatus);
-
   if (isSupabaseConfigured()) {
-    try {
-      const supabase = await createClient();
-      const updatePayload: Record<string, unknown> = { status: newStatus };
-      if (newStatus === "completada") {
-        updatePayload.payment_status = "pagado";
-        updatePayload.payment_method = "efectivo";
-        updatePayload.paid_at = new Date().toISOString();
-      } else if (newStatus === "cancelada") {
-        updatePayload.payment_status = "anulado";
-      }
-      await supabase
-        .from("appointments")
-        .update(updatePayload)
-        .eq("id", appointmentId);
-    } catch (e) {
-      console.warn("Error actualizando cita en Supabase:", e);
+    const supabase = await createClient();
+    const updatePayload: Record<string, unknown> = { status: newStatus };
+    if (newStatus === "completada") {
+      updatePayload.payment_status = "pagado";
+      updatePayload.payment_method = "efectivo";
+      updatePayload.paid_at = new Date().toISOString();
+    } else if (newStatus === "cancelada") {
+      updatePayload.payment_status = "anulado";
     }
+    const { data, error } = await supabase
+      .from("appointments")
+      .update(updatePayload)
+      .eq("id", appointmentId)
+      .select("id");
+    if (error || !data?.length) {
+      return supabaseFailure("Error actualizando cita en Supabase", error?.message);
+    }
+  } else {
+    updateStoredAppointmentStatus(appointmentId, newStatus);
   }
 
   revalidatePath("/admin");
@@ -345,18 +360,18 @@ export async function assignAppointmentBarberAction(
   const cleanBarber = barberName.trim() || "Pendiente de asignación";
   const cleanChair = chair.trim() || "No asignado";
 
-  updateStoredAppointmentAssignment(appointmentId, cleanBarber, cleanChair);
-
   if (isSupabaseConfigured()) {
-    try {
-      const supabase = await createClient();
-      await supabase
-        .from("appointments")
-        .update({ barber_name: cleanBarber, chair: cleanChair })
-        .eq("id", appointmentId);
-    } catch (e) {
-      console.warn("Error asignando barbero en Supabase:", e);
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("appointments")
+      .update({ barber_name: cleanBarber, chair: cleanChair })
+      .eq("id", appointmentId)
+      .select("id");
+    if (error || !data?.length) {
+      return supabaseFailure("Error asignando barbero en Supabase", error?.message);
     }
+  } else {
+    updateStoredAppointmentAssignment(appointmentId, cleanBarber, cleanChair);
   }
 
   revalidatePath("/admin");
@@ -370,18 +385,18 @@ export async function assignAppointmentBarberAction(
 export async function updateBusinessHoursAction(
   hoursData: Partial<BusinessHours>
 ): Promise<ActionResult> {
-  updateStoredBusinessHours(hoursData);
-
   if (isSupabaseConfigured()) {
-    try {
-      const supabase = await createClient();
-      await supabase
-        .from("business_hours")
-        .update(hoursData)
-        .eq("id", 1);
-    } catch (e) {
-      console.warn("Error guardando horario en Supabase:", e);
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("business_hours")
+      .update(hoursData)
+      .eq("id", 1)
+      .select("id");
+    if (error || !data?.length) {
+      return supabaseFailure("Error guardando horario en Supabase", error?.message);
     }
+  } else {
+    updateStoredBusinessHours(hoursData);
   }
 
   revalidatePath("/cliente");
@@ -393,18 +408,26 @@ export async function updateBusinessHoursAction(
  * Alternar visibilidad de un servicio (Activar / Desactivar)
  */
 export async function toggleServiceActiveAction(serviceId: string): Promise<ActionResult> {
-  const updated = toggleStoredServiceActive(serviceId);
-
-  if (isSupabaseConfigured() && updated) {
-    try {
-      const supabase = await createClient();
-      await supabase
-        .from("services")
-        .update({ is_active: updated.is_active })
-        .eq("id", serviceId);
-    } catch (e) {
-      console.warn("Error actualizando servicio en Supabase:", e);
+  if (isSupabaseConfigured()) {
+    const supabase = await createClient();
+    const { data: current, error: readError } = await supabase
+      .from("services")
+      .select("is_active")
+      .eq("id", serviceId)
+      .maybeSingle();
+    if (readError || !current) {
+      return supabaseFailure("Error leyendo servicio en Supabase", readError?.message);
     }
+    const { data, error } = await supabase
+      .from("services")
+      .update({ is_active: !current.is_active })
+      .eq("id", serviceId)
+      .select("id");
+    if (error || !data?.length) {
+      return supabaseFailure("Error actualizando servicio en Supabase", error?.message);
+    }
+  } else {
+    toggleStoredServiceActive(serviceId);
   }
 
   revalidatePath("/");
@@ -452,15 +475,14 @@ export async function createServiceAction(
     is_active: true,
   };
 
-  addStoredService(newServiceData);
-
   if (isSupabaseConfigured()) {
-    try {
-      const supabase = await createClient();
-      await supabase.from("services").insert(newServiceData);
-    } catch (e) {
-      console.warn("Error insertando servicio en Supabase:", e);
+    const supabase = await createClient();
+    const { data, error } = await supabase.from("services").insert(newServiceData).select("id");
+    if (error || !data?.length) {
+      return supabaseFailure("Error insertando servicio en Supabase", error?.message);
     }
+  } else {
+    addStoredService(newServiceData);
   }
 
   revalidatePath("/");
@@ -486,24 +508,24 @@ export async function updateUserAction(
     return { ok: false, message: "Nombre y correo son obligatorios." };
   }
 
-  updateStoredUser(userId, data);
-
   if (isSupabaseConfigured()) {
-    try {
-      const supabase = await createClient();
-      await supabase
-        .from("profiles")
-        .update({
-          first_name: data.first_name,
-          last_name: data.last_name,
-          email: data.email,
-          phone: data.phone || null,
-          role: data.role,
-        })
-        .eq("id", userId);
-    } catch (e) {
-      console.warn("Error actualizando perfil en Supabase:", e);
+    const supabase = await createClient();
+    const { data: rows, error } = await supabase
+      .from("profiles")
+      .update({
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        phone: data.phone || null,
+        role: data.role,
+      })
+      .eq("id", userId)
+      .select("id");
+    if (error || !rows?.length) {
+      return supabaseFailure("Error actualizando perfil en Supabase", error?.message);
     }
+  } else {
+    updateStoredUser(userId, data);
   }
 
   revalidatePath("/admin");
@@ -519,16 +541,18 @@ export async function deleteUserAction(userId: string): Promise<ActionResult> {
     return { ok: false, message: "ID de usuario inválido." };
   }
 
-  const success = deleteStoredUser(userId);
-
   if (isSupabaseConfigured()) {
-    try {
-      const supabase = await createClient();
-      await supabase.from("profiles").delete().eq("id", userId);
-    } catch (e) {
-      console.warn("Error eliminando perfil en Supabase:", e);
+    const supabase = await createClient();
+    const { data, error } = await supabase.from("profiles").delete().eq("id", userId).select("id");
+    if (error || !data?.length) {
+      return supabaseFailure("Error eliminando perfil en Supabase", error?.message);
     }
+    revalidatePath("/admin");
+    revalidatePath("/admin/usuarios");
+    return { ok: true, message: "Usuario eliminado con éxito." };
   }
+
+  const success = deleteStoredUser(userId);
 
   revalidatePath("/admin");
   revalidatePath("/admin/usuarios");
@@ -541,7 +565,7 @@ export async function deleteUserAction(userId: string): Promise<ActionResult> {
 export async function createExpenseAction(
   formData: FormData
 ): Promise<ActionResult> {
-  const user = await getSessionUserProfile();
+  const user = await getCurrentProfile();
   if (!user || user.role !== "admin") {
     return {
       ok: false,
@@ -565,22 +589,11 @@ export async function createExpenseAction(
     };
   }
 
-  addStoredExpense({
-    date,
-    time,
-    category,
-    concept,
-    amount: Math.round(amount),
-    payment_method: paymentMethod,
-    status: "registrado",
-    reference,
-    notes: null,
-  });
-
   if (isSupabaseConfigured()) {
-    try {
-      const supabase = await createClient();
-      await supabase.from("expenses").insert({
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("expenses")
+      .insert({
         date,
         time,
         category,
@@ -589,13 +602,25 @@ export async function createExpenseAction(
         payment_method: paymentMethod,
         status: "registrado",
         reference,
-      });
-    } catch (e) {
-      console.warn("Error insertando gasto en Supabase:", e);
+      })
+      .select("id");
+    if (error || !data?.length) {
+      return supabaseFailure("Error insertando gasto en Supabase", error?.message);
     }
+  } else {
+    addStoredExpense({
+      date,
+      time,
+      category,
+      concept,
+      amount: Math.round(amount),
+      payment_method: paymentMethod,
+      status: "registrado",
+      reference,
+      notes: null,
+    });
   }
 
   revalidatePath("/admin/contabilidad/ganancias");
   return { ok: true, message: "Gasto operativo registrado correctamente." };
 }
-

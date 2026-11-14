@@ -151,10 +151,12 @@ function mapExpenseRow(row: SupabaseExpenseRow): Expense {
  * sean rechazados en el servidor.
  */
 export async function getAuthenticatedProfile(): Promise<Profile | null> {
-  const localProfile = await getSessionUserProfile();
-  if (localProfile) return localProfile;
+  // Modo demo: sesión en la cookie local. Con Supabase la cookie demo se ignora (tarea 3.16).
+  if (!isSupabaseConfigured()) {
+    return getSessionUserProfile();
+  }
 
-  if (isSupabaseConfigured()) {
+  {
     try {
       const supabase = await createClient();
       const { data: auth } = await supabase.auth.getUser();
@@ -171,8 +173,6 @@ export async function getAuthenticatedProfile(): Promise<Profile | null> {
       return null;
     }
   }
-
-  return null;
 }
 
 export interface AccountingRepositoryDataset {
@@ -191,16 +191,15 @@ export async function fetchAccountingDataset(
   earliestDate: string,
   latestDate: string
 ): Promise<AccountingRepositoryDataset> {
-  const localAppointments = getAllStoredAppointments().filter(
-    (a) => a.date >= earliestDate && a.date <= latestDate
-  );
-  const localExpenses = getStoredExpenses().filter(
-    (e) => e.date >= earliestDate && e.date <= latestDate
-  );
-  const localServices = getStoredServices(false);
-  const localUsers = getAllUsers();
-
   if (!isSupabaseConfigured()) {
+    const localAppointments = getAllStoredAppointments().filter(
+      (a) => a.date >= earliestDate && a.date <= latestDate
+    );
+    const localExpenses = getStoredExpenses().filter(
+      (e) => e.date >= earliestDate && e.date <= latestDate
+    );
+    const localServices = getStoredServices(false);
+    const localUsers = getAllUsers();
     const barberSet = new Set<string>();
     for (const u of localUsers) {
       if (u.role === "barbero") {
@@ -250,28 +249,26 @@ export async function fetchAccountingDataset(
         .eq("role", "barbero"),
     ]);
 
-  let mergedAppointments = localAppointments;
-  if (!appointmentsRes.error && appointmentsRes.data) {
-    const remoteMapped = (
-      appointmentsRes.data as unknown as SupabaseAppointmentAccountingRow[]
-    ).map(mapAccountingAppointment);
-    mergedAppointments = deduplicateById([
-      ...remoteMapped,
-      ...localAppointments,
-    ]);
+  // Con Supabase solo se usan datos de la base (sin mezclar store/mock). Tarea 3.16.
+  for (const res of [appointmentsRes, expensesRes, servicesRes, barbersRes]) {
+    if (res.error) console.error("Error al leer datos contables en Supabase:", res.error.message);
   }
 
-  let mergedExpenses = localExpenses;
-  const operatingExpensesSourceAvailable = true;
-  if (!expensesRes.error && expensesRes.data) {
-    const remoteExpenses = (
-      expensesRes.data as unknown as SupabaseExpenseRow[]
-    ).map(mapExpenseRow);
-    mergedExpenses = deduplicateById([...remoteExpenses, ...localExpenses]);
-  }
+  const mergedAppointments: AppointmentWithDetails[] =
+    !appointmentsRes.error && appointmentsRes.data
+      ? (
+          appointmentsRes.data as unknown as SupabaseAppointmentAccountingRow[]
+        ).map(mapAccountingAppointment)
+      : [];
+
+  const operatingExpensesSourceAvailable = !expensesRes.error;
+  const mergedExpenses: Expense[] =
+    !expensesRes.error && expensesRes.data
+      ? (expensesRes.data as unknown as SupabaseExpenseRow[]).map(mapExpenseRow)
+      : [];
 
   const services: Service[] =
-    !servicesRes.error && servicesRes.data && servicesRes.data.length > 0
+    !servicesRes.error && servicesRes.data
       ? (servicesRes.data as Service[]).map((s) => ({
           ...s,
           price: Number(s.price),
@@ -285,17 +282,12 @@ export async function fetchAccountingDataset(
               ? Number(s.commission_percentage)
               : 40,
         }))
-      : localServices;
+      : [];
 
   const barberSet = new Set<string>();
   if (!barbersRes.error && barbersRes.data) {
     for (const b of barbersRes.data) {
       barberSet.add(`${b.first_name} ${b.last_name}`.trim());
-    }
-  }
-  for (const u of localUsers) {
-    if (u.role === "barbero") {
-      barberSet.add(`${u.first_name} ${u.last_name}`.trim());
     }
   }
   for (const app of mergedAppointments) {

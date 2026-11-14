@@ -2,8 +2,9 @@
    CONSULTAS DE DATOS (lib/data/queries.ts)
    ---------------------------------------------------------------------
    Todas las LECTURAS a la base de datos están aquí, en un solo lugar.
-   Si Supabase está configurado lee de la base de datos remota;
-   si no, lee del store en memoria reactivo.
+   Si Supabase está configurado lee SOLO de la base de datos remota
+   (sin mezclar datos de ejemplo ni del store; si falla, devuelve vacío);
+   si no, lee del store en memoria reactivo (modo demo). Tarea 3.16.
    ===================================================================== */
 
 "use server";
@@ -71,11 +72,7 @@ const APPOINTMENT_SELECT =
    --------------------------------------------------------------------- */
 const fetchCurrentProfile = cache(
   async (demoRoleFallback?: UserRole): Promise<Profile | null> => {
-    // 1. Revisar si hay sesión activa en cookies locales
-    const sessionProfile = await getSessionUserProfile();
-    if (sessionProfile) return sessionProfile;
-
-    // 2. Si Supabase está configurado, revisar Supabase Auth
+    // 1. Con Supabase, la única fuente de sesión es Supabase Auth (se ignora la cookie demo)
     if (isSupabaseConfigured()) {
       const supabase = await createClient();
       const { data: auth } = await supabase.auth.getUser();
@@ -89,6 +86,10 @@ const fetchCurrentProfile = cache(
 
       return profile ?? null;
     }
+
+    // 2. Modo demo: sesión en la cookie local
+    const sessionProfile = await getSessionUserProfile();
+    if (sessionProfile) return sessionProfile;
 
     // 3. Fallback de rol si se solicitó explícitamente para previsualizaciones
     if (demoRoleFallback === "admin") return mockAdmin;
@@ -116,8 +117,8 @@ export async function getServices(options: { onlyActive?: boolean } = {}): Promi
 
   const { data, error } = await query;
   if (error) {
-    console.error("Error al leer servicios de Supabase, usando store local:", error.message);
-    return getStoredServices(options.onlyActive);
+    console.error("Error al leer servicios de Supabase:", error.message);
+    return [];
   }
   return (data as Service[]) ?? [];
 }
@@ -144,19 +145,17 @@ export async function getNextAppointment(clientId: string): Promise<AppointmentW
 
   if (error) {
     console.error("Error al leer la próxima cita en Supabase:", error.message);
-    return getClientNextAppointment(clientId);
+    return null;
   }
-  return data ? mapAppointment(data as unknown as AppointmentRow) : getClientNextAppointment(clientId);
+  return data ? mapAppointment(data as unknown as AppointmentRow) : null;
 }
 
 /* ---------------------------------------------------------------------
    CITAS DEL DÍA (panel de administración y validación de disponibilidad)
    --------------------------------------------------------------------- */
 export async function getAppointmentsByDate(date: string): Promise<AppointmentWithDetails[]> {
-  const localAppointments = getStoredAppointments(date).filter((a) => a.status !== "cancelada");
-
   if (!isSupabaseConfigured()) {
-    return localAppointments;
+    return getStoredAppointments(date).filter((a) => a.status !== "cancelada");
   }
 
   const supabase = await createClient();
@@ -169,24 +168,10 @@ export async function getAppointmentsByDate(date: string): Promise<AppointmentWi
 
   if (error) {
     console.error("Error al leer citas en Supabase:", error.message);
-    return localAppointments;
+    return [];
   }
 
-  const remoteAppointments = ((data as unknown as AppointmentRow[]) ?? []).map(mapAppointment);
-
-  // Combinar citas remotas con el store optimista en memoria sin duplicar
-  const mergedMap = new Map<string, AppointmentWithDetails>();
-  for (const app of remoteAppointments) {
-    mergedMap.set(`${app.date}-${app.time}`, app);
-  }
-  for (const app of localAppointments) {
-    const key = `${app.date}-${app.time}`;
-    if (!mergedMap.has(key)) {
-      mergedMap.set(key, app);
-    }
-  }
-
-  return Array.from(mergedMap.values()).sort((a, b) => a.time.localeCompare(b.time));
+  return ((data as unknown as AppointmentRow[]) ?? []).map(mapAppointment);
 }
 
 /**
@@ -253,8 +238,8 @@ export async function getProfilesPage(
     .range(from, to);
 
   if (error) {
-    const all = getAllUsers();
-    return { rows: all.slice(from, to + 1), total: all.length };
+    console.error("Error al leer usuarios en Supabase:", error.message);
+    return { rows: [], total: 0 };
   }
   return { rows: (data as Profile[]) ?? [], total: count ?? 0 };
 }
@@ -271,7 +256,8 @@ export async function getClientCount(): Promise<number> {
     .eq("role", "cliente");
 
   if (error) {
-    return getAllUsers().filter((u) => u.role === "cliente").length;
+    console.error("Error al contar clientes en Supabase:", error.message);
+    return 0;
   }
   return count ?? 0;
 }

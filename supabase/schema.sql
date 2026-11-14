@@ -158,6 +158,31 @@ create policy "Los clientes pueden cancelar sus citas y los administradores actu
   using (auth.uid() = client_id or public.get_my_role() in ('admin', 'barbero'))
   with check (auth.uid() = client_id or public.get_my_role() in ('admin', 'barbero'));
 
+-- 4.0.1 REGLA DE NEGOCIO (spec F2, tarea 3.4): una sola cita no cancelada por (fecha, hora).
+-- La base de datos la hace cumplir; un segundo intento falla con el error 23505.
+create unique index if not exists appointments_unique_active_slot
+  on public.appointments (date, time)
+  where status <> 'cancelada';
+
+-- 4.0.2 DISPONIBILIDAD (tarea 3.5): horas ocupadas de una fecha, sin datos personales.
+-- Con RLS cada cliente solo ve sus citas; esta función le permite saber qué
+-- turnos tomaron otros clientes sin poder leer sus citas.
+create or replace function public.get_booked_slots(p_date date)
+returns setof text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select distinct to_char(a.time, 'HH24:MI')
+  from public.appointments a
+  where a.date = p_date and a.status <> 'cancelada'
+  order by 1;
+$$;
+
+revoke execute on function public.get_booked_slots(date) from public, anon;
+grant execute on function public.get_booked_slots(date) to authenticated;
+
 -- 4.1 TABLA: expenses (Gastos operativos de la barbería — solo administradores)
 create table if not exists public.expenses (
   id uuid default gen_random_uuid() primary key,

@@ -5,7 +5,7 @@ import Image from "next/image";
 import type { BusinessHours, Service } from "@/lib/types";
 import { formatFullDate, formatPrice, toISODate } from "@/lib/format";
 import { generateDailySlots, isOpenOn } from "@/lib/schedule";
-import { getAppointmentsByDate } from "@/lib/data/queries";
+import { getBookedSlotsByDate } from "@/lib/data/queries";
 import { createAppointmentAction } from "@/lib/actions";
 
 interface BookingWizardProps {
@@ -47,17 +47,15 @@ export default function BookingWizard({
 
   const selectedDateISO = toISODate(selectedDate);
 
-  // Consultar citas ocupadas de la fecha seleccionada para evitar overbooking
+  // Consultar las horas ocupadas (por cualquier cliente) de la fecha seleccionada
+  // para evitar overbooking. Con Supabase usa get_booked_slots (tarea 3.6).
   useEffect(() => {
     let active = true;
     setIsLoadingSlots(true);
 
-    getAppointmentsByDate(selectedDateISO)
-      .then((appointments) => {
+    getBookedSlotsByDate(selectedDateISO)
+      .then((occupied) => {
         if (!active) return;
-        const occupied = appointments
-          .filter((a) => a.status !== "cancelada")
-          .map((a) => a.time.slice(0, 5));
         setBookedSlots(occupied);
       })
       .catch(() => {

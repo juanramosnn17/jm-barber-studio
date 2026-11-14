@@ -179,6 +179,18 @@ export async function getAppointmentsByDate(date: string): Promise<AppointmentWi
  * para evitar el cruce de citas (overbooking) en el BookingWizard.
  */
 export async function getBookedSlotsByDate(date: string): Promise<string[]> {
+  // Con Supabase: la función get_booked_slots devuelve las horas ocupadas por
+  // cualquier cliente (RLS no deja ver citas ajenas). Tarea 3.5 / 3.6.
+  if (isSupabaseConfigured()) {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("get_booked_slots", { p_date: date });
+    if (error) {
+      console.error("Error al leer horas ocupadas en Supabase:", error.message);
+      return [];
+    }
+    return (data as string[] | null) ?? [];
+  }
+
   const appointments = await getAppointmentsByDate(date);
   return Array.from(
     new Set(

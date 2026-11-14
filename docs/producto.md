@@ -14,7 +14,7 @@ Que un cliente pueda registrarse y asegurar su espacio en la agenda en menos de 
 ## Funcionalidades (ver `docs/specs/`)
 - **F1 · Catálogo público y autenticación por roles:** Visualización de servicios activos en la portada, registro de clientes e inicio de sesión con redirección según rol (`cliente`, `barbero`, `admin`).
 - **F2 · Reserva de citas y área del cliente:** Flujo guiado de 4 pasos (servicio, fecha, hora libre según horario laboral y confirmación) y tarjeta de próxima cita activa.
-- **F3 · Gestión operativa de agenda diaria (Admin/Barbero):** Tablero con KPIs del día, filtro por estado, cambio de estado de citas (`confirmada`, `completada`, `cancelada`) y asignación de barbero y sillón.
+- **F3 · Gestión operativa de agenda diaria (Admin/Barbero):** Tablero con KPIs del día, filtro por estado, cambio de estado de citas (`confirmada`, `completada`, `cancelada`). La asignación de barbero y sillón queda pospuesta mientras haya un solo barbero.
 - **F4 · Administración de servicios, horarios y usuarios:** Activación/creación de servicios del catálogo, configuración de días/horas laborables y pausa de almuerzo, y gestión paginada de usuarios y roles.
 - **F5 · Módulo contable y reporte de ganancias:** Cálculo de ingresos brutos/netos, costos directos, comisiones, registro de gastos operativos, gráficas de tendencia/desglose, tabla auditable de transacciones y exportación CSV.
 

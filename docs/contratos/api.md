@@ -50,7 +50,7 @@ Regla de negocio (spec F2): **una sola cita no cancelada por `(date, time)`**, g
 | `logoutAction` | — | Cierra sesión y redirige a `/login` | — | con sesión |
 | `createAppointmentAction` | `serviceId`, `date`, `time`, `notes?` | Inserta cita `confirmada` → `{ ok, message?, appointmentId? }` | `"Faltan datos requeridos de la reserva."` · `"Este bloque horario ya está ocupado. Por favor elige otro turno."` (también ante error Postgres `23505`) | cliente |
 | `updateAppointmentStatusAction` | `appointmentId`, `newStatus: AppointmentStatus` | Cambia estado; si es `completada` registra `payment_status = 'pagado'`, costo directo y comisión | — | admin, barbero |
-| `assignAppointmentBarberAction` | `appointmentId`, `barberName`, `chair` | Asigna barbero y sillón | — | admin, barbero |
+| `assignAppointmentBarberAction` | `appointmentId`, `barberName`, `chair` | Asigna barbero y sillón (**sin pantalla en el MVP**: un solo barbero, tarea 3.17 pospuesta) | — | admin, barbero |
 | `updateBusinessHoursAction` | `Partial<BusinessHours>` | Actualiza la fila `id = 1` | — | admin |
 | `toggleServiceActiveAction` | `serviceId` | Invierte `is_active` | — | admin |
 | `createServiceAction` | FormData: `name`, `short_name`, `description`, `includes`, `price`, `duration_label`, `duration_minutes`, `icon`, `image_url`, `custom_image_url` | Inserta servicio activo | — | admin |

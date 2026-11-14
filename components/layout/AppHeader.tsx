@@ -34,10 +34,14 @@ export default function AppHeader({ user, currentRole = "cliente" }: AppHeaderPr
           {currentRole === "admin" && (
             <Link
               href="/cliente"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+              aria-label="Vista de Cliente"
+              className="flex items-center gap-1.5 h-11 px-3 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
             >
-              <span className="material-symbols-outlined text-[16px] text-secondary">visibility</span>
-              <span>Vista de Cliente</span>
+              <span className="material-symbols-outlined text-[18px] text-secondary" aria-hidden="true">
+                visibility
+              </span>
+              {/* En celular solo el ícono; el texto desde pantallas medianas */}
+              <span className="hidden sm:inline">Vista de Cliente</span>
             </Link>
           )}
 

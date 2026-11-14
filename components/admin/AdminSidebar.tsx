@@ -76,21 +76,9 @@ export default function AdminSidebar({ currentPath, adminUser }: AdminSidebarPro
         </nav>
       </div>
 
-      {/* Pie del Sidebar: Vista previa rápida & Perfil Admin */}
+      {/* Pie del Sidebar: Perfil Admin. "Vista de Cliente" queda solo en el
+          encabezado (AppHeader) para no duplicar el acceso. */}
       <div className="flex flex-col gap-space-sm pt-space-lg border-t border-surface-container-high/60">
-        <Link
-          href="/cliente"
-          className="flex items-center justify-between px-space-md py-2.5 rounded-xl bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors"
-        >
-          <div className="flex items-center gap-space-xs">
-            <span className="material-symbols-outlined text-[18px] text-secondary">visibility</span>
-            <span className="font-label-md">Vista de Cliente</span>
-          </div>
-          <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
-            open_in_new
-          </span>
-        </Link>
-
         <div className="p-space-sm rounded-xl bg-surface-container-lowest flex items-center gap-space-sm shadow-sm">
           {adminUser?.avatar_url ? (
             <Image

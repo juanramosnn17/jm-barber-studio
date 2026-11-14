@@ -37,7 +37,7 @@ export default async function HomePage() {
               Iniciar sesión
             </Link>
             <Link
-              href="/registro"
+              href={bookingHref()}
               className="px-5 py-2.5 rounded-full bg-primary text-on-primary font-label-md hover:bg-neutral-800 transition-all shadow-sm"
             >
               Reservar Cita

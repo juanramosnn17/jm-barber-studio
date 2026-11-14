@@ -14,5 +14,9 @@ Como administrador del estudio, quiero gestionar el catálogo de servicios, conf
 - [ ] En `/admin/servicios`, al crear un servicio nuevo con nombre y precio válido, este aparece en el listado administrativo y queda disponible para reservar en `/cliente`.
 - [ ] En `/admin/usuarios`, al editar el rol de un usuario (por ejemplo de `cliente` a `barbero`) y guardar, la etiqueta de rol en la tabla se actualiza inmediatamente.
 
+### Criterios con Supabase conectado [Back]
+- [ ] [Back] Los cambios de horario, servicios y roles se conservan después de un nuevo despliegue en Vercel (no se pierden como en el modo demo).
+- [ ] [Back] Un usuario promovido a `barbero` en `/admin/usuarios` entra a `/admin` en su siguiente inicio de sesión.
+
 ## Fuera de alcance
 Eliminación física de servicios que ya tienen citas históricas asociadas (se usa desactivación lógica con `is_active`).

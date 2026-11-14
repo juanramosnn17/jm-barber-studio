@@ -15,5 +15,9 @@ Como administrador o barbero del estudio, quiero visualizar todas las citas del 
 - [ ] Al cambiar el estado de una cita a `completada`, el contador de "Completadas" sube en 1 y la etiqueta de estado de esa cita cambia a completada.
 - [ ] Al cancelar una cita desde el panel administrativo, el bloque horario de esa cita vuelve a quedar disponible para nuevas reservas en `/cliente`.
 
+### Criterios con Supabase conectado [Back]
+- [ ] [Back] Una cita reservada por un cliente aparece en `/admin` al iniciar sesión como admin o barbero en otro navegador.
+- [ ] [Back] El cambio de estado y la asignación de barbero/sillón se conservan al recargar la página y al entrar desde otro dispositivo.
+
 ## Fuera de alcance
 Reprogramación arrastrando y soltando (drag & drop) en calendario semanal.

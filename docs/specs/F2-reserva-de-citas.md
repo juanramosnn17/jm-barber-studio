@@ -19,5 +19,14 @@ Como cliente autenticado, quiero ver mi próxima cita programada y contar con un
 - [ ] Al confirmar una reserva en una fecha y hora, ese turno desaparece de las horas disponibles para esa misma fecha y aparece reflejado en la tarjeta superior de próxima cita del cliente.
 - [ ] Si se intenta reservar un bloque horario ya ocupado en la misma fecha, el sistema rechaza la creación y muestra el mensaje `"Este bloque horario ya está ocupado. Por favor elige otro turno."`.
 
+### Regla de negocio para la base de datos
+Un bloque `(fecha, hora)` admite **una sola cita no cancelada**. Con Supabase, esta regla la hace cumplir la propia base de datos (índice único parcial) y no solo la memoria del servidor; la disponibilidad se consulta con una función que devuelve las horas ocupadas sin exponer datos de otros clientes.
+
+### Criterios con Supabase conectado [Back]
+- [ ] [Back] Una cita confirmada sigue apareciendo en la tarjeta **Próxima cita** después de cerrar sesión y volver a entrar desde otro navegador.
+- [ ] [Back] Si el cliente A reserva un turno, al cliente B (otra cuenta, otro navegador) ese turno ya no le aparece disponible en la misma fecha.
+- [ ] [Back] Si dos clientes confirman el mismo turno casi al mismo tiempo, solo uno queda guardado y el otro ve el mensaje `"Este bloque horario ya está ocupado. Por favor elige otro turno."`.
+- [ ] [Back] Un cliente no ve en `/cliente` ninguna cita de otro cliente.
+
 ## Fuera de alcance
 Pago en línea de la cita o selección manual del barbero por parte del cliente durante la reserva.

@@ -17,5 +17,9 @@ Como administrador exclusivo del estudio, quiero consultar el reporte financiero
 - [ ] Al registrar un nuevo gasto operativo con fecha dentro del periodo consultado, concepto e importe mayor a cero, el total de **Gastos Operativos** aumenta en ese monto y la **Ganancia Neta** disminuye en la misma proporción.
 - [ ] Al hacer clic en exportar CSV, el navegador descarga un archivo `.csv` con el resumen del periodo y las filas de transacciones filtradas.
 
+### Criterios con Supabase conectado [Back]
+- [ ] [Back] Un gasto registrado sigue apareciendo en el reporte después de recargar y de entrar desde otro navegador.
+- [ ] [Back] Una cita marcada como `completada` en `/admin` aparece como ingreso en el reporte del periodo que la contiene.
+
 ## Fuera de alcance
 Facturación electrónica ante la DIAN y conciliación bancaria automática con entidades financieras.

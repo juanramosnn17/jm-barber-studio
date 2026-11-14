@@ -17,5 +17,10 @@ Como visitante de JM Barber Studio, quiero explorar el catálogo de servicios co
 - [ ] En `/registro`, si las contraseñas ingresadas no coinciden, se muestra el mensaje `"Las contraseñas no coinciden."` y no se crea el usuario.
 - [ ] Si un usuario autenticado con rol `cliente` intenta abrir `/admin` en la barra de direcciones, es redirigido inmediatamente a `/cliente`.
 
+### Criterios con Supabase conectado [Back]
+- [ ] [Back] Al registrarse en `/registro`, aparece un usuario nuevo en Supabase → Authentication y una fila en `profiles` con `role = 'cliente'`.
+- [ ] [Back] La cuenta creada puede iniciar sesión desde otro navegador o dispositivo con el mismo correo y contraseña.
+- [ ] [Back] Un servicio desactivado en la tabla `services` (`is_active = false`) deja de aparecer en `/` tras recargar.
+
 ## Fuera de alcance
 Inicio de sesión con proveedores OAuth externos (Google/Facebook) y recuperación automática de contraseña por correo sin Supabase Auth.

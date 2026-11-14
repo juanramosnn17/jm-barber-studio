@@ -25,7 +25,7 @@
 > Orden de ejecución por prioridad (detalle en `GUIA_BACKEND.md`): 3.10 → 3.1 → 3.2 → 3.3 → 3.7 → 3.4/3.5/3.6 → 3.12 → 3.13 → 3.11 → 3.8 → 3.9 → 3.14.
 
 - [x] 3.1 Proyecto Supabase listo: se reactivó el proyecto existente "Barberia JM" (`rlptxllgviigshgoihyh`, región `us-west-2`). La URL y la anon key van en `.env.local` (nunca en el código) en el paso 4.
-- [ ] 3.2 Ejecutar `supabase/schema.sql` en el proyecto y comprobar en el Table Editor las 5 tablas (`profiles`, `services`, `business_hours`, `appointments`, `expenses`) con RLS activo y los datos semilla de servicios y horario.
+- [x] 3.2 Ejecutar `supabase/schema.sql` en el proyecto y comprobar en el Table Editor las 5 tablas (`profiles`, `services`, `business_hours`, `appointments`, `expenses`) con RLS activo y los datos semilla de servicios y horario.
 - [ ] 3.3 Configurar Supabase Auth: proveedor correo/contraseña activo, confirmación de correo desactivada para el MVP y `Site URL` = `https://jm-barber-studio-delta.vercel.app` (más `http://localhost:3000` en Redirect URLs).
 - [ ] 3.4 Actualizar la spec F2 y luego `supabase/schema.sql`: índice único parcial en `appointments (date, time)` donde `status <> 'cancelada'`, para que la base de datos impida el overbooking.
 - [ ] 3.5 Agregar al esquema una función `get_booked_slots(date)` (`security definer`) que devuelva solo las horas ocupadas, para que el cliente vea la disponibilidad real sin poder leer citas ajenas (RLS).

@@ -38,10 +38,17 @@ Pasos ordenados **de lo más importante a lo menos importante**. Haz uno a la ve
 - **Qué se hace:** registrarte en `/registro` y promover tu cuenta con `update profiles set role = 'admin' where email = '...'`.
 - **Quién:** tú te registras; el agente ejecuta el `update`.
 - **Listo cuando:** al iniciar sesión entras a `/admin`.
+- **Hecho:** cuenta admin creada. Para lograrlo se corrigió `proxy.ts` (tarea 3.15), que leía el rol de un dato editable por el usuario.
 
 ---
 
 ## 🟠 Prioridad 2 · Datos correctos y seguridad
+
+### Paso 5b · Usar solo datos de Supabase cuando está conectado · tarea 3.16
+- **Por qué:** con Supabase conectado, la app todavía mezcla datos de ejemplo y de memoria: `/admin` muestra 4 citas que no existen en la base y `/cliente` busca citas con un id local (`usr-…`) en vez del `uuid` de Supabase. Sin esto, ningún criterio [Back] se puede verificar con confianza.
+- **Qué se hace:** en `lib/data/queries.ts` y `lib/actions.ts`, cuando `isSupabaseConfigured()` es verdadero, leer y escribir solo en Supabase y tomar el usuario de la sesión de Supabase. El modo demo queda igual.
+- **Quién:** el agente.
+- **Listo cuando:** con la base vacía de citas, `/admin` muestra 0 citas y `/cliente` no muestra errores en la consola.
 
 ### Paso 6 · Impedir dos citas en el mismo turno · tareas 3.4, 3.5 y 3.6
 - **Por qué:** hoy el control de cruces solo revisa la memoria del servidor y la tabla no lo impide. Además, con RLS cada cliente solo ve sus citas, así que no sabe qué turnos tomaron otros.

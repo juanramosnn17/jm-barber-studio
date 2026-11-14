@@ -21,6 +21,7 @@ Como visitante de JM Barber Studio, quiero explorar el catálogo de servicios co
 - [ ] [Back] Al registrarse en `/registro`, aparece un usuario nuevo en Supabase → Authentication y una fila en `profiles` con `role = 'cliente'`.
 - [ ] [Back] La cuenta creada puede iniciar sesión desde otro navegador o dispositivo con el mismo correo y contraseña.
 - [ ] [Back] Con Supabase conectado, la portada `/` carga el catálogo sin errores para un visitante sin sesión y para un usuario con sesión de cada rol.
+- [ ] [Back] Un usuario promovido a `admin` en la tabla `profiles` entra a `/admin` en su siguiente visita, y un `cliente` sigue siendo redirigido a `/cliente` aunque tenga una cookie `jm_user_session=user-admin`.
 - [ ] [Back] Un servicio desactivado en la tabla `services` (`is_active = false`) deja de aparecer en `/` tras recargar.
 
 ## Fuera de alcance

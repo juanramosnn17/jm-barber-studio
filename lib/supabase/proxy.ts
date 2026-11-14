@@ -23,25 +23,25 @@ export async function updateSession(request: NextRequest) {
   // Respuesta por defecto: dejar pasar la petición tal cual
   let response = NextResponse.next({ request });
 
-  // DATOS DE SUPABASE Y LOCAL STORE:
-  // Verificamos si existe la cookie de sesión local 'jm_user_session'
-  const localSessionCookie = request.cookies.get("jm_user_session")?.value?.trim();
-  let isLoggedIn = Boolean(localSessionCookie);
+  let isLoggedIn = false;
   let userRole: string | null = null;
 
-  if (localSessionCookie) {
-    const localUser = findUserById(localSessionCookie);
-    if (localUser) {
-      userRole = localUser.role;
-    } else if (localSessionCookie === "user-admin") {
-      userRole = "admin";
-    } else if (localSessionCookie === "user-cliente") {
-      userRole = "cliente";
+  if (!isSupabaseConfigured()) {
+    // MODO DEMO (sin Supabase): la sesión es la cookie local 'jm_user_session'
+    const localSessionCookie = request.cookies.get("jm_user_session")?.value?.trim();
+    isLoggedIn = Boolean(localSessionCookie);
+    if (localSessionCookie) {
+      const localUser = findUserById(localSessionCookie);
+      if (localUser) {
+        userRole = localUser.role;
+      } else if (localSessionCookie === "user-admin") {
+        userRole = "admin";
+      } else if (localSessionCookie === "user-cliente") {
+        userRole = "cliente";
+      }
     }
-  }
-
-  // Si Supabase está configurado, validamos y renovamos sesión con tokens de Supabase
-  if (isSupabaseConfigured()) {
+  } else {
+    // MODO SUPABASE: la cookie demo se ignora; sesión y rol salen de Supabase (tarea 3.15)
     const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       cookies: {
         getAll() {
@@ -69,10 +69,10 @@ export async function updateSession(request: NextRequest) {
 
     if (Boolean(claimsData?.claims) || Boolean(userData?.user)) {
       isLoggedIn = true;
-      const metaRole = userData?.user?.user_metadata?.role as string | undefined;
-      if (metaRole) {
-        userRole = metaRole;
-      }
+      // El rol se lee de la tabla profiles (get_my_role), nunca de user_metadata,
+      // porque el propio usuario puede modificar sus metadatos.
+      const { data: dbRole } = await supabase.rpc("get_my_role");
+      userRole = typeof dbRole === "string" ? dbRole : null;
     }
   }
 
@@ -92,8 +92,13 @@ export async function updateSession(request: NextRequest) {
     return redirectWithCookies(url, response);
   }
 
-  // Si un usuario con rol exclusivamente 'cliente' intenta acceder a /admin → redirigir a /cliente
-  if (isLoggedIn && path.startsWith("/admin") && userRole === "cliente") {
+  // /admin solo admite 'admin' y 'barbero'; cualquier otro rol (o sin rol) → /cliente
+  if (
+    isLoggedIn &&
+    path.startsWith("/admin") &&
+    userRole !== "admin" &&
+    userRole !== "barbero"
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/cliente";
     url.search = "";
@@ -104,7 +109,6 @@ export async function updateSession(request: NextRequest) {
   if (
     isLoggedIn &&
     path.startsWith("/admin/contabilidad") &&
-    userRole &&
     userRole !== "admin"
   ) {
     const url = request.nextUrl.clone();

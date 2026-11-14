@@ -25,7 +25,7 @@ Leyenda: ✅ cumple · ❌ no cumple · ⏳ pendiente.
 | 9 | F2 | Un cliente no ve citas de otro | B revisa `/cliente` | ✅ el cliente B no vio citas de otros en `/cliente` (confirmado por el estudiante; RLS probado en el paso 6) |
 | 10 | F3 | La cita de A aparece en `/admin` del admin | Admin abre `/admin` el día de la cita | ✅ el barbero ve en `/admin` las 3 citas de hoy con el nombre de cada cliente |
 | 11 | F3 | El cambio de estado se conserva | Admin completa la cita y recarga | ✅ las citas de hoy 09:00 y 17:00 se marcaron `completada` (pago `pagado`) a las 13:00 y siguen así en la base tras recargas y 2 despliegues |
-| 12 | F4 | Cambios de horario/servicios/roles sobreviven a un despliegue | Revisar después del siguiente push | ⏳ |
+| 12 | F4 | Cambios de horario/servicios/roles sobreviven a un despliegue | Revisar después del siguiente push | ✅ tras el despliegue de `3bf513d`: "Arreglo de cejas" sigue apagado (no sale en la portada), el gasto y los cambios de rol siguen en la base. El horario no se modificó hoy, así que esa parte no se probó |
 | 13 | F4 | Usuario promovido a `barbero` entra a `/admin` | Admin cambia A a barbero; A vuelve a entrar | ✅ `juanramosnn17` pasó a barbero desde `/admin/usuarios` y al volver a entrar llegó a `/admin` (solo "Citas" en el menú; `/admin/usuarios` lo devuelve a `/admin`) |
 | 14 | F4 | Usuario eliminado desaparece y no puede entrar | Admin elimina a B; B intenta entrar | ✅ el admin eliminó a B a las 14:08 con `delete_user`; la cuenta desapareció y su sesión recibió 403 "user_not_found" |
 | 15 | F4 | Si Supabase rechaza un cambio, se ve un error | Probado en el paso 7 (borrado bloqueado por RLS) | ✅ (local) |

@@ -24,3 +24,5 @@ Pagos en línea con tarjeta de crédito o pasarela de pago por adelantado, enví
 ## Cómo sabremos que funciona
 - El 100% de las reservas creadas desde `/cliente` bloquean inmediatamente el turno elegido para evitar cruces de horario en la misma fecha y hora.
 - Al marcar una cita como `completada` o registrar un gasto operativo en `/admin`, el reporte en `/admin/contabilidad/ganancias` actualiza de forma exacta la ganancia bruta y neta del periodo y permite exportar la sábana de transacciones en CSV.
+- **Con el backend en Supabase:** el 100% de las citas, gastos y cambios de configuración se conservan al recargar, al entrar desde otro dispositivo y después de un nuevo despliegue.
+- **Con el backend en Supabase:** cero citas no canceladas con la misma fecha y hora en la tabla `appointments`, y ningún cliente puede ver citas o datos de otro cliente.

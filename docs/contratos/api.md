@@ -73,5 +73,5 @@ Códigos de error: `400` filtros inválidos · `401` sin sesión · `403` rol di
 ## Funciones SQL previstas (pendientes)
 | Función | Tipo | Propósito | Tarea |
 |---|---|---|---|
-| `is_admin()` / `current_role()` | `security definer`, `stable` | Leer el rol del usuario sin activar RLS de `profiles` (evita recursión infinita, error `42P17`) | 3.10 |
+| `is_admin()` / `get_my_role()` | `security definer`, `stable` | Leer el rol del usuario sin activar RLS de `profiles` (evita recursión infinita, error `42P17`) | 3.10 |
 | `get_booked_slots(date)` | `security definer` | Devolver solo las horas ocupadas de una fecha, sin datos personales | 3.5 |

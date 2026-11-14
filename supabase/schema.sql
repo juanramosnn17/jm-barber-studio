@@ -21,14 +21,44 @@ create table if not exists public.profiles (
 -- Habilitar RLS en profiles
 alter table public.profiles enable row level security;
 
+-- 1.1 FUNCIONES DE ROL (tarea 3.10)
+-- Leen el rol del usuario actual con "security definer", es decir, sin
+-- pasar por las políticas RLS de profiles. Así ninguna política consulta
+-- profiles desde dentro de profiles (evita el error 42P17 de recursión).
+-- Nota: se llama get_my_role() porque CURRENT_ROLE es palabra reservada de SQL.
+create or replace function public.get_my_role()
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select role from public.profiles where id = auth.uid();
+$$;
+
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(public.get_my_role() = 'admin', false);
+$$;
+
 -- Políticas de profiles
+drop policy if exists "Los usuarios pueden ver su propio perfil o administradores ver todos" on public.profiles;
 create policy "Los usuarios pueden ver su propio perfil o administradores ver todos"
   on public.profiles for select
-  using (auth.uid() = id or (select role from public.profiles where id = auth.uid()) = 'admin');
+  using (auth.uid() = id or public.get_my_role() in ('admin', 'barbero'));
 
+-- El usuario edita sus datos, pero no puede cambiar su propio rol:
+-- el rol nuevo debe ser igual al que ya tenía (get_my_role lee el valor previo).
+drop policy if exists "Los usuarios pueden editar su propio perfil" on public.profiles;
 create policy "Los usuarios pueden editar su propio perfil"
   on public.profiles for update
-  using (auth.uid() = id);
+  using (auth.uid() = id)
+  with check (auth.uid() = id and role = public.get_my_role());
 
 -- 2. TABLA: services (Catálogo de servicios de la barbería)
 create table if not exists public.services (
@@ -51,13 +81,16 @@ create table if not exists public.services (
 
 alter table public.services enable row level security;
 
+drop policy if exists "Cualquiera puede ver servicios activos" on public.services;
 create policy "Cualquiera puede ver servicios activos"
   on public.services for select
-  using (is_active = true or (select role from public.profiles where id = auth.uid()) = 'admin');
+  using (is_active = true or public.is_admin());
 
+drop policy if exists "Solo administradores pueden crear o modificar servicios" on public.services;
 create policy "Solo administradores pueden crear o modificar servicios"
   on public.services for all
-  using ((select role from public.profiles where id = auth.uid()) = 'admin');
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- 3. TABLA: business_hours (Configuración del horario de atención)
 create table if not exists public.business_hours (
@@ -73,13 +106,16 @@ create table if not exists public.business_hours (
 
 alter table public.business_hours enable row level security;
 
+drop policy if exists "Cualquiera puede consultar el horario de atención" on public.business_hours;
 create policy "Cualquiera puede consultar el horario de atención"
   on public.business_hours for select
   using (true);
 
+drop policy if exists "Solo administradores pueden actualizar el horario" on public.business_hours;
 create policy "Solo administradores pueden actualizar el horario"
   on public.business_hours for update
-  using ((select role from public.profiles where id = auth.uid()) = 'admin');
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- 4. TABLA: appointments (Citas y reservaciones con registro contable de pago)
 create table if not exists public.appointments (
@@ -106,17 +142,21 @@ create table if not exists public.appointments (
 
 alter table public.appointments enable row level security;
 
+drop policy if exists "Los clientes ven sus citas y los administradores ven todas" on public.appointments;
 create policy "Los clientes ven sus citas y los administradores ven todas"
   on public.appointments for select
-  using (auth.uid() = client_id or (select role from public.profiles where id = auth.uid()) in ('admin', 'barbero'));
+  using (auth.uid() = client_id or public.get_my_role() in ('admin', 'barbero'));
 
+drop policy if exists "Los clientes autenticados pueden crear citas para sí mismos" on public.appointments;
 create policy "Los clientes autenticados pueden crear citas para sí mismos"
   on public.appointments for insert
   with check (auth.uid() = client_id);
 
+drop policy if exists "Los clientes pueden cancelar sus citas y los administradores actualizarlas" on public.appointments;
 create policy "Los clientes pueden cancelar sus citas y los administradores actualizarlas"
   on public.appointments for update
-  using (auth.uid() = client_id or (select role from public.profiles where id = auth.uid()) in ('admin', 'barbero'));
+  using (auth.uid() = client_id or public.get_my_role() in ('admin', 'barbero'))
+  with check (auth.uid() = client_id or public.get_my_role() in ('admin', 'barbero'));
 
 -- 4.1 TABLA: expenses (Gastos operativos de la barbería — solo administradores)
 create table if not exists public.expenses (
@@ -135,13 +175,22 @@ create table if not exists public.expenses (
 
 alter table public.expenses enable row level security;
 
+drop policy if exists "Solo administradores pueden consultar y gestionar gastos operativos" on public.expenses;
 create policy "Solo administradores pueden consultar y gestionar gastos operativos"
   on public.expenses for all
-  using ((select role from public.profiles where id = auth.uid()) = 'admin');
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- 5. TRIGGER: Creación automática de perfil al registrarse en Auth
+-- Todo registro nuevo es 'cliente'. El rol NO se toma de los metadatos que
+-- envía el usuario (cualquiera podría pedir 'admin' con la anon key pública);
+-- solo un administrador lo cambia después desde /admin/usuarios.
 create or replace function public.handle_new_user()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
 begin
   insert into public.profiles (id, first_name, last_name, email, phone, role, reminders_opt_in)
   values (
@@ -150,12 +199,12 @@ begin
     coalesce(new.raw_user_meta_data->>'last_name', ''),
     new.email,
     new.raw_user_meta_data->>'phone',
-    coalesce(new.raw_user_meta_data->>'role', 'cliente'),
+    'cliente',
     coalesce((new.raw_user_meta_data->>'reminders_opt_in')::boolean, true)
   );
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created

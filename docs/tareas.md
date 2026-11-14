@@ -22,7 +22,7 @@
 
 ## Back · Supabase en la nube (pendiente)
 > Regla: una tarea a la vez; al terminar cada una se verifican en el navegador los criterios marcados **[Back]** en `docs/specs/` y se marca aquí. Se puede apoyar en el conector MCP de Supabase. El contrato de cada operación está en `docs/contratos/api.md`.
-> Orden de ejecución: 3.1 → 3.6, luego 3.10 → 3.14 (agregadas tras revisar el esquema y el código), y al final 3.7 → 3.9.
+> Orden de ejecución por prioridad (detalle en `GUIA_BACKEND.md`): 3.10 → 3.1 → 3.2 → 3.3 → 3.7 → 3.4/3.5/3.6 → 3.12 → 3.13 → 3.11 → 3.8 → 3.9 → 3.14.
 
 - [ ] 3.1 Crear el proyecto en Supabase (región `sa-east-1` São Paulo) y anotar URL y anon key en `.env.local` (nunca en el código).
 - [ ] 3.2 Ejecutar `supabase/schema.sql` en el proyecto y comprobar en el Table Editor las 5 tablas (`profiles`, `services`, `business_hours`, `appointments`, `expenses`) con RLS activo y los datos semilla de servicios y horario.
@@ -30,7 +30,7 @@
 - [ ] 3.4 Actualizar la spec F2 y luego `supabase/schema.sql`: índice único parcial en `appointments (date, time)` donde `status <> 'cancelada'`, para que la base de datos impida el overbooking.
 - [ ] 3.5 Agregar al esquema una función `get_booked_slots(date)` (`security definer`) que devuelva solo las horas ocupadas, para que el cliente vea la disponibilidad real sin poder leer citas ajenas (RLS).
 - [ ] 3.6 Ajustar `lib/data/queries.ts` y `createAppointmentAction` (`lib/actions.ts`) para usar `get_booked_slots` y traducir el error de unicidad de Postgres (`23505`) al mensaje `"Este bloque horario ya está ocupado. Por favor elige otro turno."`, manteniendo intacto el modo demo.
-- [ ] 3.10 Agregar a `schema.sql` las funciones `is_admin()` y `current_role()` (`security definer`, `stable`) y reescribir todas las políticas RLS para usarlas en lugar de `(select role from profiles ...)`, que provoca recursión infinita (`42P17`). Verificar que `/` carga los servicios con Supabase conectado.
+- [x] 3.10 Agregar a `schema.sql` las funciones `is_admin()` y `get_my_role()` (`security definer`, `stable`) y reescribir todas las políticas RLS para usarlas en lugar de `(select role from profiles ...)`, que provoca recursión infinita (`42P17`). Verificar que `/` carga los servicios con Supabase conectado.
 - [ ] 3.11 Agregar políticas para que el admin pueda **editar** cualquier perfil y una función `delete_user(id)` (`security definer`, solo admin) que borre el usuario de `auth.users` (y en cascada su perfil); ajustar `deleteUserAction` para usarla.
 - [ ] 3.12 En cada mutación de `lib/actions.ts`, revisar el `error` que devuelve Supabase: si falla, responder `{ ok: false, message }` y no confirmar el cambio en el store en memoria.
 - [ ] 3.13 Validar el rol en el servidor dentro de cada Server Action según la columna "Rol" de `docs/contratos/api.md` (hoy solo `createExpenseAction` lo hace), en ambos modos.

@@ -2,8 +2,8 @@
 
 Aquí van las capturas del diseño elegido (Bloque 5 de la guía), que sirven de referencia al construir o modificar pantallas junto con `docs/diseno/identidad-visual.md`.
 
-| Archivo | Qué debe mostrar | Estado |
+| Archivo | Qué muestra | Estado |
 |---|---|---|
-| `pantalla-principal.png` | Portada `/` con el hero y la grilla de servicios en la paleta crema `#FCF9F2`, negro `#000000` y bronce `#775A00` | Pendiente: tomar la captura en https://jm-barber-studio-delta.vercel.app y guardarla con este nombre |
+| `pantalla-principal.png` | Portada pública `/` (1440 px de ancho): encabezado con "Iniciar sesión" y "Reservar Cita", botón "Reservar mi turno", catálogo de servicios activos con precio en COP y duración, y pie de página. Paleta crema `#FCF9F2`, negro `#000000` y bronce `#775A00` | ✅ Tomada el 14-nov-2026 de https://jm-barber-studio-delta.vercel.app con Edge en modo headless. Muestra 5 servicios porque "Arreglo de cejas" estaba desactivado ese día |
 
 La decisión de usar la variante clara "Sartorial Grooming" está en `docs/decisiones.md`.

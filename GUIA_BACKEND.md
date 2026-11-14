@@ -101,7 +101,8 @@ Pasos ordenados **de lo más importante a lo menos importante**. Haz uno a la ve
 
 ### Paso 13 · Guardar la captura del diseño
 - **Qué se hace:** tomar una captura de la portada y guardarla como `docs/diseno/referencias/pantalla-principal.png`.
-- **Quién:** tú.
+- **Quién:** el agente (Edge en modo headless sobre la URL pública).
+- **Hecho:** `docs/diseno/referencias/pantalla-principal.png` guardada el 14-nov-2026.
 
 ---
 

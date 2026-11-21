@@ -38,11 +38,20 @@
 
 `Service = { id, name, shortName, description, includes, price, durationLabel, durationMinutes, imageUrl, icon, isActive, sortOrder, reserveAmount }`.
 
+- `GET` sin token o con rol distinto de ADMIN devuelve solo los activos; el ADMIN recibe todos salvo que envíe `onlyActive=true`.
+- En `POST` solo `name` y `price` (≥ 1) son obligatorios. Si faltan → 400 "Nombre y precio son obligatorios.". Valores por defecto: `shortName` y `description` = `name`, `durationMinutes` = 30, `durationLabel` = "`{durationMinutes} min`", `icon` = `content_cut`. El servicio nuevo queda activo, al final del orden y con reserva 0.
+- `reserve` mayor que el precio → 400 "La reserva no puede superar el precio del servicio."; id inexistente → 404 `NOT_FOUND`.
+
 ## 3. Horario de atención (F2, F4)
 | Método y ruta | Cuerpo | Respuesta | Rol |
 |---|---|---|---|
 | `GET /business-hours` | — | `{ openDays: number[], openTime, closeTime, breakStart, breakEnd, slotMinutes }` | público |
-| `PUT /business-hours` | mismos campos | `200` | ADMIN |
+| `PUT /business-hours` | mismos campos | `200` con el horario guardado | ADMIN |
+
+Horas en formato `"HH:mm"`; días de 0 (domingo) a 6 (sábado), al menos uno; `slotMinutes` de 10 a 240. Para no tener descanso, se envían `breakStart` y `breakEnd` en `null`. Errores 400:
+- cierre igual o anterior a la apertura;
+- descanso con un solo extremo;
+- descanso fuera del horario o que termina antes de empezar.
 
 ## 4. Citas (F2, F3)
 | Método y ruta | Cuerpo / parámetros | Respuesta | Rol | Errores |

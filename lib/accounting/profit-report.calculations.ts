@@ -217,8 +217,11 @@ export function resolveAppointmentFinancials(
   const reserveCents = isPaidServiceUnit
     ? toCents(appointment.reserve_amount ?? service?.reserve_amount ?? 0)
     : ZERO;
-  // La reserva nunca supera lo efectivamente cobrado
-  const supplyCostCents = reserveCents > netCents ? netCents : reserveCents;
+  // La reserva nunca supera lo efectivamente cobrado ni es negativa: con un
+  // reembolso mayor al cobro (netCents < 0) la reserva es 0 y la pérdida se ve
+  // completa en la ganancia (igual que AccountingService en Spring Boot).
+  const supplyCostCents =
+    isPaidServiceUnit && reserveCents > netCents ? netCents : reserveCents;
   const commissionCents = ZERO;
 
   const directCostCents = supplyCostCents + commissionCents;

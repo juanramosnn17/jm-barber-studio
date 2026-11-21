@@ -91,8 +91,7 @@ const testServices: Service[] = [
     description: "Corte clásico",
     includes: null,
     price: 25000,
-    direct_cost: 2500,
-    commission_percentage: 40, // 10.000 COP sobre 25.000
+    reserve_amount: 6000, // reserva ACTUAL; app-1 quedó fijada en 5.000 (historial 3.27)
     duration_label: "40 min",
     duration_minutes: 40,
     image_url: null,
@@ -107,8 +106,7 @@ const testServices: Service[] = [
     description: "Corte y barba",
     includes: null,
     price: 38000,
-    direct_cost: 4000,
-    commission_percentage: 45, // 17.100 COP sobre 38.000
+    reserve_amount: 8000,
     duration_label: "60 min",
     duration_minutes: 60,
     image_url: null,
@@ -138,8 +136,7 @@ const sampleAppointments: AppointmentWithDetails[] = [
     discount_amount: 0,
     refund_amount: 0,
     tip_amount: 3000,
-    direct_cost_amount: 2500,
-    commission_amount: 10000,
+    reserve_amount: 5000, // fijada al completar (el servicio hoy aparta 6.000)
     paid_at: "2026-10-10T10:45:00-05:00",
   },
   // Cita 2: Completada y pagada con descuento de 3.000 y reembolso parcial de 5.000
@@ -161,8 +158,7 @@ const sampleAppointments: AppointmentWithDetails[] = [
     discount_amount: 3000,
     refund_amount: 5000,
     tip_amount: 2000,
-    direct_cost_amount: 4000,
-    commission_amount: 13500,
+    reserve_amount: null, // sin reserva fijada: usa la del servicio (8.000)
     paid_at: "2026-10-12T16:00:00-05:00",
   },
   // Cita 3: Pendiente de pago (NO debe sumarse a ingresos)
@@ -184,8 +180,7 @@ const sampleAppointments: AppointmentWithDetails[] = [
     discount_amount: 0,
     refund_amount: 0,
     tip_amount: 0,
-    direct_cost_amount: 2500,
-    commission_amount: 10000,
+    reserve_amount: null,
     paid_at: null,
   },
   // Cita 4: Cancelada / pago anulado (NO debe sumarse a ingresos)
@@ -207,8 +202,7 @@ const sampleAppointments: AppointmentWithDetails[] = [
     discount_amount: 0,
     refund_amount: 0,
     tip_amount: 0,
-    direct_cost_amount: 0,
-    commission_amount: 0,
+    reserve_amount: null,
     paid_at: null,
   },
   // Cita del periodo anterior (Septiembre 2026) para probar comparación
@@ -230,8 +224,7 @@ const sampleAppointments: AppointmentWithDetails[] = [
     discount_amount: 0,
     refund_amount: 0,
     tip_amount: 0,
-    direct_cost_amount: 4000,
-    commission_amount: 17100,
+    reserve_amount: 8000,
     paid_at: "2026-09-15T15:00:00-05:00",
   },
 ];
@@ -301,25 +294,25 @@ describe("Módulo Contable: Reporte Detallado de Ganancias", () => {
     // Ingresos netos: 63.000 - 3.000 - 5.000 = 55.000.00
     assert.equal(summary.netRevenue, "55000.00");
 
-    // Costos directos: Insumos (2.500 + 4.000 = 6.500) + Comisiones (10.000 + 13.500 = 23.500) = 30.000.00
-    assert.equal(summary.supplyCosts, "6500.00");
-    assert.equal(summary.commissions, "23500.00");
-    assert.equal(summary.directCosts, "30000.00");
+    // Reserva del negocio (modelo 3.27, sin comisión): 5.000 fijada en app-1 (no la actual de 6.000) + 8.000 de srv-2 = 13.000.00
+    assert.equal(summary.supplyCosts, "13000.00");
+    assert.equal(summary.commissions, "0.00");
+    assert.equal(summary.directCosts, "13000.00");
 
-    // Ganancia bruta: 55.000 - 30.000 = 25.000.00
-    assert.equal(summary.grossProfit, "25000.00");
+    // Tu ganancia: 55.000 - 13.000 = 42.000.00
+    assert.equal(summary.grossProfit, "42000.00");
 
     // Gastos operativos: solo exp-1 (10.000.00); exp-2 está anulado
     assert.equal(summary.operatingExpenses, "10000.00");
 
-    // Ganancia neta: 25.000 - 10.000 = 15.000.00
-    assert.equal(summary.netProfit, "15000.00");
+    // Saldo después de gastos: 42.000 - 10.000 = 32.000.00 (equivale a Ingresos - Gastos - lo que sobra de la reserva)
+    assert.equal(summary.netProfit, "32000.00");
 
-    // Margen bruto: (25.000 / 55.000) * 100 = 45.45%
-    assert.equal(summary.grossMarginPercentage, "45.45");
+    // Margen sobre Tu ganancia: (42.000 / 55.000) * 100 = 76.36%
+    assert.equal(summary.grossMarginPercentage, "76.36");
 
-    // Margen neto: (15.000 / 55.000) * 100 = 27.27%
-    assert.equal(summary.netMarginPercentage, "27.27");
+    // Margen después de gastos: (32.000 / 55.000) * 100 = 58.18%
+    assert.equal(summary.netMarginPercentage, "58.18");
 
     // Servicios pagados: 2 | Ticket promedio: 55.000 / 2 = 27.500.00
     assert.equal(summary.paidServicesCount, 2);
@@ -362,7 +355,12 @@ describe("Módulo Contable: Reporte Detallado de Ganancias", () => {
       testServices
     );
 
+    // Cobrado neto: 25.000 - 30.000 = -5.000. La reserva NO puede quedar negativa
+    // (antes valía -5.000 y escondía la pérdida): reserva 0, ganancia -5.000.
     assert.equal(summary.netRevenue, "-5000.00");
+    assert.equal(summary.supplyCosts, "0.00");
+    assert.equal(summary.grossProfit, "-5000.00");
+    // Después del gasto de 10.000: -5.000 - 10.000 = -15.000
     assert.equal(summary.netProfit, "-15000.00");
     assert.equal(summary.grossMarginPercentage, null);
     assert.ok(
@@ -564,8 +562,8 @@ describe("Módulo Contable: Reporte Detallado de Ganancias", () => {
     // Los totales globales permanecen idénticos en ambas páginas
     assert.equal(page1.data.summary.netRevenue, "55000.00");
     assert.equal(page2.data.summary.netRevenue, "55000.00");
-    assert.equal(page1.data.summary.netProfit, "15000.00");
-    assert.equal(page2.data.summary.netProfit, "15000.00");
+    assert.equal(page1.data.summary.netProfit, "32000.00");
+    assert.equal(page2.data.summary.netProfit, "32000.00");
   });
 
   it("17 y 18. Exporta CSV consistente con los totales del reporte y sanitiza fórmulas peligrosas (=, +, -, @)", () => {
@@ -603,10 +601,9 @@ describe("Módulo Contable: Reporte Detallado de Ganancias", () => {
     if (!csvOut.ok) return;
 
     assert.ok(csvOut.csvContent.includes('"Ingresos netos","55000.00"'));
-    assert.ok(csvOut.csvContent.includes('"Ganancia neta","15000.00"'));
-    // Verifica que el cliente esté parcialmente anonimizado ("Carlos M." en vez de "Carlos Mendoza")
-    assert.ok(csvOut.csvContent.includes('"Carlos M."'));
-    assert.ok(!csvOut.csvContent.includes('"Carlos Mendoza"'));
+    assert.ok(csvOut.csvContent.includes('"Ganancia neta","32000.00"'));
+    // El reporte es solo del admin y muestra el nombre real del cliente (spec F5, tarea 3.28)
+    assert.ok(csvOut.csvContent.includes('"Carlos Mendoza"'));
   });
 
   it("19. Opera con centavos exactos (BigInt) y formatea la moneda COP correctamente", () => {

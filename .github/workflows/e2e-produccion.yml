@@ -1,14 +1,16 @@
 # =====================================================================
 # Smoke test E2E de producción · JM Barber Studio (tarea 4.16)
-# Corre DESPUÉS de que Vercel publica en producción (evento deployment_status
-# que Vercel envía a GitHub) para confirmar que la app quedó funcionando.
+# Corre DESPUÉS de que Vercel publica en producción para confirmar que la app
+# quedó funcionando. Vercel no crea "deployments" de GitHub en este proyecto:
+# reporta un estado de commit con context "Vercel", así que se escucha el
+# evento `status` y solo se corre cuando ese estado es success en main.
 # También se puede lanzar a mano desde la pestaña Actions (workflow_dispatch).
 # Solo lectura: no inicia sesión ni crea datos.
 # =====================================================================
 name: E2E producción
 
 on:
-  deployment_status:
+  status:
   workflow_dispatch:
 
 permissions:
@@ -19,8 +21,9 @@ jobs:
     name: Smoke test contra producción
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event.deployment_status.state == 'success' &&
-       github.event.deployment.environment == 'Production')
+      (github.event.context == 'Vercel' &&
+       github.event.state == 'success' &&
+       contains(github.event.branches.*.name, 'main'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:

@@ -20,6 +20,7 @@
   - `@docs/specs/F4-servicios-horarios-usuarios.md`
   - `@docs/specs/F5-contabilidad-y-ganancias.md`
 - Plantilla para nuevas specs: `@docs/specs/F0-plantilla.md`
+- Modelo de datos (entidades, restricciones y dueños): `@docs/datos/modelo.md`
 - Contrato de datos y API (backend): `@docs/contratos/api.md`
 - Contrato API REST del backend Spring Boot: `@docs/contratos/api-rest.md`
 - Guía paso a paso del backend por prioridad: `GUIA_BACKEND.md`
@@ -27,6 +28,14 @@
 - Decisiones técnicas y supuestos: `@docs/decisiones.md`
 - Cronograma y checklist de implementación: `@docs/tareas.md`
 - Skill de construcción de interfaz: `@.claude/skills/ui-componentes/SKILL.md`
+- Skill de seguridad y datos: `@.claude/skills/backend-seguro/SKILL.md`
+
+## Backend
+- **Stack MVP (U4):** Supabase (PostgreSQL + Auth + RLS) + Route Handlers (`app/api/...`) y Server Actions en Next.js; validación con Zod; despliegue en Vercel.
+- **Fuente de verdad:** `@docs/datos/modelo.md` y `@docs/contratos/api.md`. Primero el contrato, luego el código; si algo no está en `api.md`, preguntar antes de implementar.
+- **Regla obligatoria:** aplica SIEMPRE la skill `backend-seguro` (`@.claude/skills/backend-seguro/SKILL.md`) al tocar tablas, migraciones, políticas RLS, Route Handlers, Server Actions o consultas de datos.
+- **Migraciones:** todo cambio de esquema va en `supabase/migrations/` y nunca se aplica sin mostrar el SQL completo y recibir aprobación.
+- **Secretos:** nunca escribir llaves o tokens en el código; usar variables de entorno (`.env.local` fuera de Git) y jamás exponer `service_role` con `NEXT_PUBLIC_`.
 
 ## Reglas de trabajo (Spec-Driven Development)
 - **Primero el documento, después el código:** Si cambia una regla de negocio o criterio de aceptación, actualiza primero la spec en `docs/specs/` antes de editar código.

@@ -20,6 +20,14 @@ Como administrador o barbero del estudio, quiero visualizar todas las citas del 
 - [ ] [Back] Una cita reservada por un cliente aparece en `/admin` al iniciar sesión como admin o barbero en otro navegador.
 - [ ] [Back] El cambio de estado se conserva al recargar la página y al entrar desde otro dispositivo.
 
+## Criterios de aceptación del back
+- [ ] **Dado** un `admin` o `barbero` autenticado, **cuando** llama a `GET /api/appointments?date=YYYY-MM-DD`, **entonces** responde `200` con las citas no canceladas de esa fecha ordenadas por `time` (con rango `time`–`end_time`); para el `barbero`, solo se incluye nombre y apellido del cliente (nunca correo ni teléfono).
+- [ ] **Dado** un `cliente` autenticado, **cuando** llama a `GET /api/appointments?date=YYYY-MM-DD`, **entonces** responde `403` con `"No tienes permisos para realizar esta acción."`.
+- [ ] **Dado** una cita `confirmada`, **cuando** un `admin` o `barbero` llama a `PATCH /api/appointments/:id/status` con `{ "status": "completada" }`, **entonces** responde `200`, congela `gross_amount` y `reserve_amount` del servicio en ese momento y fija `payment_status = "pagado"` y `payment_method = "efectivo"`.
+- [ ] **Dado** una cita ya `completada`, **cuando** un `barbero` intenta cambiar su estado vía `PATCH /api/appointments/:id/status`, **entonces** responde `403` y el cobro no se altera (solo el `admin` puede revertir una cita completada).
+- [ ] **Dado** una cita `cancelada` cuyo rango horario ya fue tomado por otro cliente, **cuando** el `admin` intenta reactivarla a `confirmada`, **entonces** responde `409` con `"Este bloque horario ya está ocupado. Por favor elige otro turno."`.
+- [ ] **Dado** un `cliente` A autenticado, **cuando** intenta cancelar una cita perteneciente al cliente B (o intenta marcar una cita propia como `completada`), **entonces** responde `404` (si es ajena por RLS) o `403` (si pide un estado distinto de `cancelada`), sin modificar la cita.
+
 ## Fuera de alcance
 - Reprogramación arrastrando y soltando (drag & drop) en calendario semanal.
 - **Asignar barbero y sillón por cita** (pospuesto mientras haya un solo barbero). Las columnas `barber_name` / `chair` se conservan en la base; la acción del servidor se eliminó (código sin pantalla) y habría que crearla de nuevo si se suma un segundo barbero.

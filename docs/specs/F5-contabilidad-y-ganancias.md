@@ -58,5 +58,15 @@ Como administrador exclusivo del estudio, quiero consultar el reporte financiero
 - [ ] [Back] Una cita marcada como `completada` en `/admin` aparece como ingreso en el reporte del periodo que la contiene.
 - [ ] [Back] Una anulación, edición, eliminación o ajuste de pago se conserva al recargar y al entrar desde otro navegador.
 
+## Criterios de aceptación del back
+- [ ] **Dado** un `barbero` o `cliente` autenticado (o un visitante sin sesión), **cuando** llama a `GET /api/accounting/profit-report`, `GET /api/accounting/cash-closing`, `POST /api/expenses` o `POST /api/product-sales`, **entonces** responde `401` (sin sesión) o `403` (sin rol `admin`) y no expone ningún dato financiero.
+- [ ] **Dado** el `admin` autenticado, **cuando** registra un gasto válido (`POST /api/expenses` con `amount > 0`) o una venta de producto válida (`POST /api/product-sales` con `amount > 0`), **entonces** responde `201` y los totales de `GET /api/accounting/profit-report` reflejan el cambio de inmediato.
+- [ ] **Dado** un gasto o venta con `amount <= 0` o sin concepto, **cuando** el `admin` lo envía, **entonces** responde `400` y no crea ningún registro.
+- [ ] **Dado** un gasto registrado, **cuando** el `admin` intenta anularlo (`POST /api/expenses/:id/void`) con motivo vacío, **entonces** responde `400` con `"Escribe el motivo de la anulación."`; **cuando** envía un motivo válido, responde `200`, lo marca `anulado` con `void_reason` y `voided_at`, y deja de sumar en los totales.
+- [ ] **Dado** un gasto ya `anulado`, **cuando** el `admin` intenta editarlo (`PUT /api/expenses/:id`) o volver a anularlo, **entonces** responde `409` y el registro no cambia.
+- [ ] **Dado** una cita `completada` con `gross_amount = 25000`, **cuando** el `admin` llama a `PATCH /api/appointments/:id/payment` con `discount_amount = 15000` y `refund_amount = 15000`, **entonces** responde `400` con `"El descuento y el reembolso no pueden superar el valor del servicio."`; y si la cita no está `completada`, responde `409` con `"Solo se puede ajustar el pago de una cita completada."`.
+- [ ] **Dado** el `admin` autenticado, **cuando** solicita `GET /api/accounting/profit-report?format=csv` con un gasto cuyo concepto empieza por `=`, **entonces** responde `200` con el archivo `.csv` saneado (prefijando `'`) para evitar inyección de fórmulas.
+- [ ] **Dado** un día con `$25.000` cobrados en efectivo, `$20.000` por Nequi y un gasto de `$5.000` en efectivo, **cuando** el `admin` consulta `GET /api/accounting/cash-closing?date=...`, **entonces** responde `200` con `expected_cash = 20000`.
+
 ## Fuera de alcance
 Facturación electrónica ante la DIAN y conciliación bancaria automática con entidades financieras.

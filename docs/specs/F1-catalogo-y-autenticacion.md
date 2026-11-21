@@ -26,5 +26,13 @@ Como visitante de JM Barber Studio, quiero explorar el catálogo de servicios co
 - [ ] [Back] Un usuario promovido a `admin` en la tabla `profiles` entra a `/admin` en su siguiente visita, y un `cliente` sigue siendo redirigido a `/cliente` aunque tenga una cookie `jm_user_session=user-admin`.
 - [ ] [Back] Un servicio desactivado en la tabla `services` (`is_active = false`) deja de aparecer en `/` tras recargar.
 
+## Criterios de aceptación del back
+- [ ] **Dado** un visitante sin sesión, **cuando** llama a `GET /api/services`, **entonces** responde `200` únicamente con los servicios activos (`is_active = true`) ordenados por `sort_order`.
+- [ ] **Dado** un visitante nuevo con datos válidos y contraseñas coincidentes, **cuando** llama a `POST /api/auth/register` (incluso enviando `"role": "admin"` en el cuerpo), **entonces** responde `201`, crea el usuario en Auth y su perfil en `profiles` siempre con `role = "cliente"`.
+- [ ] **Dado** un visitante que envía contraseñas distintas en `POST /api/auth/register`, **cuando** el servidor valida la entrada, **entonces** responde `400` con `"Las contraseñas no coinciden."` y no crea ningún usuario.
+- [ ] **Dado** un correo que ya existe en `profiles`, **cuando** alguien intenta registrarse con ese mismo correo (en mayúsculas o minúsculas), **entonces** responde `409` con `"Ya existe una cuenta con ese correo. Inicia sesión."`.
+- [ ] **Dado** un visitante con contraseña incorrecta, **cuando** llama a `POST /api/auth/login`, **entonces** responde `401` con `"Credenciales incorrectas. Verifica tu correo y contraseña o regístrate si aún no tienes cuenta."` sin filtrar detalles internos.
+- [ ] **Dado** un visitante sin sesión, **cuando** llama a `GET /api/auth/me`, **entonces** responde `401`.
+
 ## Fuera de alcance
 Inicio de sesión con proveedores OAuth externos (Google/Facebook) y recuperación automática de contraseña por correo sin Supabase Auth.

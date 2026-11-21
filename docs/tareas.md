@@ -73,3 +73,62 @@
 - [ ] 4.9 Conectar Next.js: cliente HTTP en `lib/api/`, las Server Actions y consultas llaman a la API, token JWT en cookie `httpOnly`, y `proxy.ts` valida la sesión con `GET /auth/me`. El modo demo (store en memoria) se mantiene cuando `API_URL` no está definida.
 - [ ] 4.10 Verificar en el navegador todos los criterios de F1–F5 contra el backend Spring Boot y registrar el resultado en `docs/verificacion-springboot.md`.
 - [ ] 4.11 Retirar Supabase del frontend (dependencias, variables y archivos `lib/supabase/*`) cuando 4.10 esté completa. El despliegue del backend en AWS queda para la Unidad 6.
+
+## Back (U4) · Plan de instalaciones (Supabase + Next.js)
+> Orden: configuración → inicio de sesión → lecturas públicas → escrituras → auditoría.
+> Cada tarea corresponde a una operación del contrato (`docs/contratos/api.md`) o pieza transversal, aplica la skill `backend-seguro` y cabe en un commit.
+
+- [ ] **T-B1 · Configuración, migración y zona horaria (transversal)**
+  - **Archivos:** `supabase/migrations/20261120000000_esquema_mvp.sql`, `supabase/seed.sql`, `.env.local.example`, `app/admin/page.tsx`
+  - **Criterio:** RLS activo en las 6 tablas, sin `service_role` con `NEXT_PUBLIC_`, y fecha del dashboard admin calculada en `America/Bogota` (`nowInStudio()`).
+  - **Verificación:** ejecutar `supabase/seed.sql` en el SQL Editor, comprobar `rowsecurity = true` en las 6 tablas, verificar Security Advisors sin alertas críticas y revisar `grep` de secretos.
+
+- [ ] **T-B2 · Autenticación, registro seguro y sesión por rol (F1)**
+  - **Archivos:** `lib/actions.ts` (`loginAction`, `registerAction`, `logoutAction`), `lib/supabase/proxy.ts`, `lib/data/queries.ts` (`getCurrentProfile`)
+  - **Criterio:** F1 (registro siempre `cliente`, login 401 con mensaje del contrato, `/auth/me` 401 sin sesión, logout `scope: "local"`).
+  - **Verificación:** registrar cuenta enviando metadato `role: "admin"` y confirmar en `profiles` que queda `cliente`; probar login inválido y acceso sin sesión a `/cliente` y `/admin`.
+
+- [ ] **T-B3 · Lecturas públicas: catálogo activo y horario de atención (F1, F2)**
+  - **Archivos:** `lib/data/queries.ts` (`getServices`, `getBusinessHours`), `app/page.tsx`
+  - **Criterio:** F1 (visitante ve solo `is_active = true`), F2 (horario incluye `slot_minutes`).
+  - **Verificación:** consultar `/` sin sesión y comprobar que un servicio con `is_active = false` no aparece; revisar con `curl` que la portada responde 200 sin exponer datos privados.
+
+- [ ] **T-B4 · Administración de servicios editables y paso de agenda `slot_minutes` (F4)**
+  - **Archivos:** `lib/actions.ts` (`updateServiceAction`, `createServiceAction`, `updateServiceReserveAction`, `updateBusinessHoursAction`), `components/admin/ServicesManager.tsx`, `components/admin/ScheduleConfig.tsx`
+  - **Criterio:** F4 (editar nombre, precio, `duration_minutes` y `reserve_amount` de servicios existentes; editar `slot_minutes` en horarios; rechazo 400 si `reserve_amount > price`, `duration_minutes <= 0` o horario inválido; rechazo 403 para cliente/barbero).
+  - **Verificación:** editar duración de un servicio de 40 a 60 min y cambiar `slot_minutes` a 15/30 min; probar intento de guardar `reserve_amount > price` y llamada directa como cliente (debe fallar).
+
+- [ ] **T-B5 · Disponibilidad por rango horario `[time, end_time)` sin datos personales (F2)**
+  - **Archivos:** `lib/data/queries.ts` (`getBookedRangesByDate`), `lib/schedule.ts`, `components/booking/BookingWizard.tsx`
+  - **Criterio:** F2 (al elegir Corte 60 min vs Barba 30 min, solo se muestran horas donde cabe completo el servicio sin cruzar citas activas, almuerzo, cierre ni horas pasadas).
+  - **Verificación:** con una cita `09:00–10:00` y almuerzo `14:00–15:00`, comprobar que `09:30` no aparece para ningún servicio y que `13:30` aparece para Barba (30 min) pero no para Corte (60 min); confirmar que `get_booked_ranges` no devuelve nombres ni IDs.
+
+- [ ] **T-B6 · Reserva de cita con `end_time` congelado y sin "Barbero sin asignar" (F2, F3)**
+  - **Archivos:** `lib/actions.ts` (`createAppointmentAction`), `lib/types.ts`, `components/booking/NextAppointmentCard.tsx`, `components/booking/BookingWizard.tsx`, `components/admin/DailyAppointmentsList.tsx`
+  - **Criterio:** F2 (servidor valida servicio activo, horario laboral y pasado, calcula `end_time`, traduce `23505`/`23P01` a conflicto 409; tarjeta y agenda muestran rango horario sin "Barbero sin asignar" ni sillón).
+  - **Verificación:** intentar reservar en dos pestañas rangos solapados (`09:00–10:00` y `09:30–10:00`) y confirmar que el segundo recibe `"Este bloque horario ya está ocupado..."`; probar reserva en fecha pasada o servicio inactivo por fuera del formulario.
+
+- [ ] **T-B7 · Agenda diaria y cerraduras de cambio de estado por rol (F3)**
+  - **Archivos:** `lib/actions.ts` (`updateAppointmentStatusAction`), `lib/data/queries.ts` (`getAppointmentsByDate`)
+  - **Criterio:** F3 (al completar se congelan `gross_amount` y `reserve_amount`; `barbero` no puede revertir una `completada` y solo ve nombre/apellido; `cliente` solo cancela sus citas activas; citas con `client_id = NULL` muestran `"Cliente eliminado"`).
+  - **Verificación:** como `barbero` intentar cambiar estado de una cita `completada` (rechazado); como `cliente` A intentar cancelar cita de B o marcar la propia como `completada` (rechazado).
+
+- [ ] **T-B8 · Gestión de usuarios con borrado seguro `ON DELETE SET NULL` (F4)**
+  - **Archivos:** `lib/actions.ts` (`updateUserAction`, `deleteUserAction`), `components/admin/UsersTable.tsx`
+  - **Criterio:** F4 (admin no puede eliminarse ni quitarse el rol `admin`; al eliminar un cliente, sus citas futuras se cancelan y sus citas históricas completadas permanecen en contabilidad).
+  - **Verificación:** eliminar un cliente de prueba con 1 cita completada y 1 futura confirmada; verificar que el turno futuro quedó libre, el ingreso histórico sigue en el reporte y la cuenta ya no inicia sesión.
+
+- [ ] **T-B9 · Gastos operativos y ajuste de pagos con propinas en Supabase (F5)**
+  - **Archivos:** `lib/actions.ts` (`createExpenseAction`, `updateExpenseAction`, `voidExpenseAction`, `deleteExpenseAction`, `adjustAppointmentPaymentAction`), `components/accounting/AccountingAdjustments.tsx`
+  - **Criterio:** F5 (categoría `compra_insumos_productos`, propinas `tip_amount` aparte, anulación con motivo obligatorio, bloqueo de edición en gastos anulados, `discount + refund <= gross_amount` solo en citas `completada`).
+  - **Verificación:** intentar anular sin motivo (400), editar un gasto anulado (409) y enviar `discount + refund > gross_amount` (400); probar llamada como `barbero` (403).
+
+- [ ] **T-B10 · Ventas de productos y cierre de caja diario en Supabase (F5)**
+  - **Archivos:** `lib/actions.ts` (`createProductSaleAction`, `voidProductSaleAction`, `deleteProductSaleAction`), `lib/accounting/profit-report.*.ts`, `app/admin/contabilidad/ganancias/page.tsx`, `app/api/accounting/profit-report/route.ts`
+  - **Criterio:** F5 (ventas de productos suman a Ingresos y Tu ganancia sin reservar ni alterar ticket promedio; cierre de caja muestra efectivo esperado por método; CSV saneado contra fórmulas `= + - @`).
+  - **Verificación:** registrar venta de producto y gasto en efectivo el mismo día y comprobar el cierre de caja y la exportación CSV con concepto iniciando en `=`; verificar que `barbero` y `cliente` reciben 403.
+
+- [ ] **T-B11 · Auditoría en sesión limpia, pruebas de fuego y redeploy en Vercel (Bloque 8)**
+  - **Archivos:** `docs/auditoria-seguridad.md` (reporte), `BITACORA_IA.md`
+  - **Criterio:** 0 hallazgos de severidad alta abiertos; todas las pruebas de fuego pasan en la URL de Vercel; `BITACORA_IA.md` actualizada con fugas encontradas y cerradas.
+  - **Verificación:** ejecutar Prompt 6 de auditoría en sesión limpia, probar con `curl` y dos navegadores en producción, y revisar que `.next/static` no contenga `service_role`.

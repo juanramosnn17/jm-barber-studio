@@ -129,6 +129,32 @@ class CatalogoYHorarioTest {
             .andExpect(jsonPath("$.code").value("NOT_FOUND"));
     }
 
+    @Test
+    void editarServicioReemplazaSusDatosYValidaLaReserva() throws Exception {
+        String admin = token(Role.ADMIN);
+        String id = crearServicio(admin, "Corte básico", 20000);
+
+        editar(admin, id, "{\"name\":\"Corte clásico\",\"price\":22000,\"durationMinutes\":45,\"reserveAmount\":4000}")
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.name").value("Corte clásico"))
+            .andExpect(jsonPath("$.price").value(22000))
+            .andExpect(jsonPath("$.durationLabel").value("45 min"))
+            .andExpect(jsonPath("$.reserveAmount").value(4000))
+            .andExpect(jsonPath("$.isActive").value(true));
+
+        editar(admin, id, "{\"name\":\"Corte\",\"price\":3000,\"reserveAmount\":4000}")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value(BarberServiceService.RESERVE_TOO_HIGH));
+        editar(admin, id, "{\"name\":\"\",\"price\":3000}").andExpect(status().isBadRequest());
+        editar(token(Role.BARBERO), id, "{\"name\":\"X\",\"price\":3000}").andExpect(status().isForbidden());
+        editar(admin, UUID.randomUUID().toString(), "{\"name\":\"X\",\"price\":3000}").andExpect(status().isNotFound());
+    }
+
+    private ResultActions editar(String auth, String id, String body) throws Exception {
+        return mvc.perform(put("/api/v1/services/{id}", id).header("Authorization", auth)
+            .contentType(MediaType.APPLICATION_JSON).content(body));
+    }
+
     // ---------- Horario ----------
 
     @Test

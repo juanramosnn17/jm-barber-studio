@@ -14,6 +14,9 @@ import {
   exportServerProfitReportCsv,
   getServerProfitReport,
 } from "@/lib/accounting/profit-report.service";
+import { isApiConfigured } from "@/lib/api/config";
+import { API_UNAVAILABLE_MESSAGE, apiDownload } from "@/lib/api/client";
+import { buildReportQuery } from "@/lib/api/accounting";
 
 function extractQueryFilters(request: NextRequest): Record<string, unknown> {
   const sp = request.nextUrl.searchParams;
@@ -36,6 +39,37 @@ function extractQueryFilters(request: NextRequest): Record<string, unknown> {
 
 export async function GET(request: NextRequest) {
   const format = request.nextUrl.searchParams.get("format")?.toLowerCase();
+
+  // Con la API Spring Boot, el CSV (saneado) lo genera la API; aquí solo se reenvía (tarea 4.9).
+  // La API valida el rol ADMIN con el token de la cookie.
+  if (format === "csv" && isApiConfigured()) {
+    const sp = request.nextUrl.searchParams;
+    const query = buildReportQuery({
+      quickPeriod: sp.get("quickPeriod") ?? undefined,
+      startDate: sp.get("startDate") ?? undefined,
+      endDate: sp.get("endDate") ?? undefined,
+    });
+    const upstream = await apiDownload(`/accounting/report.csv?${query}`);
+    if (!upstream || !upstream.ok) {
+      const body = upstream ? await upstream.json().catch(() => null) : null;
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "EXPORT_FAILED", message: body?.message ?? API_UNAVAILABLE_MESSAGE },
+        },
+        { status: upstream?.status ?? 503 }
+      );
+    }
+    return new NextResponse(await upstream.arrayBuffer(), {
+      status: 200,
+      headers: {
+        "Content-Type": upstream.headers.get("Content-Type") ?? "text/csv; charset=utf-8",
+        "Content-Disposition": upstream.headers.get("Content-Disposition") ?? 'attachment; filename="reporte-contable.csv"',
+        "Cache-Control": "no-store, max-age=0",
+      },
+    });
+  }
+
   const rawFilters = extractQueryFilters(request);
 
   if (format === "csv") {

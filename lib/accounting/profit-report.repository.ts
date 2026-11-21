@@ -9,6 +9,9 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { isApiConfigured } from "@/lib/api/config";
+import { apiRequest } from "@/lib/api/client";
+import { toProfile, type ApiUser } from "@/lib/api/mappers";
 import { getSessionUserProfile } from "@/lib/auth/session";
 import {
   getAllStoredAppointments,
@@ -160,6 +163,12 @@ function mapExpenseRow(row: SupabaseExpenseRow): Expense {
  * sean rechazados en el servidor.
  */
 export async function getAuthenticatedProfile(): Promise<Profile | null> {
+  // Con la API Spring Boot, el perfil (y el rol actual) sale de GET /auth/me (tarea 4.9)
+  if (isApiConfigured()) {
+    const res = await apiRequest<ApiUser>("/auth/me");
+    return res.ok ? toProfile(res.data) : null;
+  }
+
   // Modo demo: sesión en la cookie local. Con Supabase la cookie demo se ignora (tarea 3.16).
   if (!isSupabaseConfigured()) {
     return getSessionUserProfile();

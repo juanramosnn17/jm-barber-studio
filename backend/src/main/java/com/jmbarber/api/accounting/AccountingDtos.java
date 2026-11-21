@@ -1,5 +1,6 @@
 package com.jmbarber.api.accounting;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -14,9 +15,11 @@ public final class AccountingDtos {
                           int servicesCount, Long averageTicket, long tips) {
     }
 
+    /** Los campos de detalle (descuento, categoría, anulación…) van en 0 o null cuando no aplican al tipo. */
     public record TransactionRow(String id, String type, LocalDate date, String time, String concept,
                                  String clientName, String paymentMethod, long income, long expense, long tip,
-                                 String status) {
+                                 String status, long discount, long refund, String category, String reference,
+                                 String voidReason, Instant voidedAt) {
     }
 
     public record TransactionsPage(List<TransactionRow> rows, int total, int page, int totalPages) {

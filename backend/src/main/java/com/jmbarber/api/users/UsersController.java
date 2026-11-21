@@ -32,8 +32,9 @@ public class UsersController {
     }
 
     @GetMapping
-    public UsersPage list(@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "6") int size) {
-        return service.list(page, size);
+    public UsersPage list(@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "6") int size,
+                          @RequestParam(required = false) Role role) {
+        return service.list(page, size, role);
     }
 
     @PutMapping("/{id}")

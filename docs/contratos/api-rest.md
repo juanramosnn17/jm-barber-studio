@@ -41,6 +41,13 @@
 - `GET` sin token o con rol distinto de ADMIN devuelve solo los activos; el ADMIN recibe todos salvo que envíe `onlyActive=true`.
 - En `POST` solo `name` y `price` (≥ 1) son obligatorios. Si faltan → 400 "Nombre y precio son obligatorios.". Valores por defecto: `shortName` y `description` = `name`, `durationMinutes` = 30, `durationLabel` = "`{durationMinutes} min`", `icon` = `content_cut`. El servicio nuevo queda activo, al final del orden y con reserva 0.
 - `reserve` mayor que el precio → 400 "La reserva no puede superar el precio del servicio."; id inexistente → 404 `NOT_FOUND`.
+- **`PUT /services/{id}` (solo ADMIN, implementado en la 4.9):**
+  - recibe los mismos campos que `POST` más `reserveAmount` (opcional, por defecto 0) y reemplaza el servicio completo;
+  - aplica las mismas reglas y valores por defecto que crear, y además `0 ≤ reserveAmount ≤ price` (si no, 400 con el mensaje de la reserva);
+  - no cambia `isActive` ni `sortOrder`;
+  - solo afecta citas y cobros nuevos: las citas completadas conservan el valor cobrado y la reserva que quedaron fijados;
+  - responde `200 Service`; id inexistente → 404.
+  - Lo usa la pantalla "Editar servicio" (tarea T-B4).
 
 ## 3. Horario de atención (F2, F4)
 | Método y ruta | Cuerpo | Respuesta | Rol |
@@ -96,7 +103,7 @@ Detalles (tarea 4.5):
 ## 5. Usuarios (F4)
 | Método y ruta | Cuerpo / parámetros | Respuesta | Rol | Errores |
 |---|---|---|---|---|
-| `GET /users?page=1&size=6` | — | `{ rows: user[], total }` | ADMIN | — |
+| `GET /users?page=1&size=6&role=` | `role` opcional (filtra por rol) | `{ rows: user[], total }` | ADMIN | — |
 | `PUT /users/{id}` | `{ firstName, lastName, email, phone, role }` | `200 user` | ADMIN | 409 `"No puedes quitarte a ti mismo el rol de administrador."` |
 | `DELETE /users/{id}` | — | `204` | ADMIN | 409 `"No puedes eliminar tu propia cuenta."` |
 
@@ -200,6 +207,24 @@ Detalles (tarea 4.8, mismas reglas que el motor actual `lib/accounting/`):
   - el archivo se descarga como `reporte-contable_{startDate}_{endDate}.csv`.
 - **Pendiente como tarea aparte:** cierre de caja (3.31).
 
+## 8. Conexión del frontend Next.js (tarea 4.9)
+- **Modo de datos:** cada lectura (`lib/data/queries.ts`) y cada acción (`lib/actions.ts`) elige en este orden:
+  1. **API Spring Boot**, si está definida `API_URL` (variable de servidor, **sin** `NEXT_PUBLIC_`; en local es `http://localhost:8080`);
+  2. **Supabase**, si están sus variables (lo que hoy usa Vercel, hasta la 4.11);
+  3. **modo demo** (store en memoria).
+- **Cliente HTTP:** `lib/api/client.ts` (`server-only`) agrega `Authorization: Bearer` con el token de la cookie y devuelve `{ ok, data }` o `{ ok: false, code, message }`. Si la API no responde: `"No se pudo conectar con el servidor. Inténtalo de nuevo en unos minutos."`.
+- **Adaptadores:** `lib/api/mappers.ts` convierte el JSON de la API (`camelCase`, enums en MAYÚSCULAS) a los tipos de `lib/types.ts` (`snake_case`, minúsculas). Así los componentes no cambian.
+- **Sesión:**
+  - login y registro guardan el JWT en la cookie `jm_api_token` (`httpOnly`, `sameSite=lax`, `secure` en producción, 7 días); el navegador nunca lo lee;
+  - cerrar sesión borra la cookie;
+  - `proxy.ts` valida la sesión con `GET /auth/me` en cada página: si la API responde 401, borra la cookie y trata al visitante como sin sesión;
+  - las reglas de rutas por rol no cambian.
+- **Contabilidad:** la página pide `GET /accounting/report` y lo adapta al formato de sus componentes, sin recalcular nada en el frontend. El CSV de `/api/accounting/profit-report?format=csv` se reenvía desde `GET /accounting/report.csv`.
+- **Funciones que solo existen en Spring Boot** (decisión del 2026-11-20): la propina al ajustar un pago (3.29), la categoría "Compra de insumos / productos" (3.29), las ventas de productos (3.30) y el cierre de caja (3.31). Solo se muestran en modo API.
+- **Ajustes del backend para esta tarea:**
+  - `GET /users` acepta `role=CLIENTE|BARBERO|ADMIN` (opcional) para filtrar y contar;
+  - las filas de `transactions.rows` agregan `discount`, `refund`, `category`, `reference`, `voidReason` y `voidedAt`, que el detalle del movimiento necesita para editar o ajustar. Estos campos van en `null` (o 0 en los montos) cuando no aplican.
+
 ## Equivalencia con el contrato actual
 | Hoy (Next.js + Supabase) | Spring Boot |
 |---|---|
@@ -211,3 +236,10 @@ Detalles (tarea 4.8, mismas reglas que el motor actual `lib/accounting/`):
 | `createExpenseAction` · `updateExpenseAction` · `voidExpenseAction` · `deleteExpenseAction` | `/expenses/...` |
 | `/api/accounting/profit-report` | `/accounting/report` (+ `.csv`) |
 | RLS + `get_my_role()` + `requireRole` | Spring Security (`@PreAuthorize`) + validación por dueño en el servicio |
+
+## 9. Alineación pendiente con el modelo U4 (`docs/datos/modelo.md`, tarea 4.12 · migración Flyway `V3`)
+> Cambios acordados en la entrevista de datos U4 que el backend Spring Boot incorporará después de completar la tarea 4.9 (sin editar `V1` ni `V2`):
+- ~~`PUT /services/{id}`~~: ya implementado en la tarea 4.9 (ver §2).
+- **Duración real y no solapamiento en citas (`appointments.end_time`):** migración `V3` agrega `end_time TIME NOT NULL` (congelado al reservar como `time + service.durationMinutes`), valida en `AppointmentService` que el rango `[time, end_time)` quepa dentro de `business_hours` sin cruzar descanso ni solaparse con otra cita no cancelada (`409 SLOT_TAKEN`), y expone rangos ocupados (`GET /appointments/booked-ranges?date=`).
+- **Borrado seguro de usuarios (`ON DELETE SET NULL`):** migración `V3` permite `appointments.client_id NULL` y cambia la FK a `ON DELETE SET NULL`; antes de borrar el usuario en `UserAdminService.delete`, se cancelan sus citas futuras activas para liberar los turnos, conservando las citas históricas como `"Cliente eliminado"` en contabilidad.
+- **Cerradura de rol `BARBERO` sobre citas completadas:** en `PATCH /appointments/{id}/status`, si el estado actual es `COMPLETADA`, solo `ADMIN` puede modificarlo (`BARBERO` recibe `403 FORBIDDEN`).

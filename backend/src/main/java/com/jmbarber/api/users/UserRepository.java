@@ -21,4 +21,7 @@ public interface UserRepository extends JpaRepository<User, String> {
           u.firstName, u.lastName""",
         countQuery = "select count(u) from User u")
     Page<User> findAllForAdmin(Pageable pageable);
+
+    /** Usuarios de un solo rol, por nombre (filtro role= de GET /users). */
+    Page<User> findByRoleOrderByFirstNameAscLastNameAsc(Role role, Pageable pageable);
 }

@@ -19,6 +19,8 @@ interface ProfitReportFiltersProps {
   appliedFilters: ProfitFiltersType;
   period: ProfitPeriodInfo;
   filterOptions: ProfitReportFilterOptions;
+  /** Botones extra junto a "Registrar gasto" (p. ej. registrar venta de producto, tarea 3.30). */
+  extraActions?: React.ReactNode;
 }
 
 const QUICK_PERIOD_OPTIONS: { key: QuickPeriodKey; label: string }[] = [
@@ -32,6 +34,7 @@ export default function ProfitReportFilters({
   appliedFilters,
   period,
   filterOptions,
+  extraActions,
 }: ProfitReportFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -202,6 +205,8 @@ export default function ProfitReportFilters({
             </span>
             <span>Registrar gasto</span>
           </button>
+
+          {extraActions}
 
           <a
             href={exportCsvUrl}

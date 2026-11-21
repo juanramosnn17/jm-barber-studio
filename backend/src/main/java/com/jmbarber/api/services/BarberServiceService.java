@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.jmbarber.api.common.ApiException;
 import com.jmbarber.api.services.ServiceDtos.CreateServiceRequest;
 import com.jmbarber.api.services.ServiceDtos.ServiceResponse;
+import com.jmbarber.api.services.ServiceDtos.UpdateServiceRequest;
 
 /** Reglas del catálogo (spec F4 y tarea 3.27). */
 @Service
@@ -46,6 +47,21 @@ public class BarberServiceService {
             blankToNull(req.imageUrl()),
             repository.maxSortOrder() + 1);
         return ServiceResponse.from(repository.save(service));
+    }
+
+    @Transactional
+    public ServiceResponse update(String id, UpdateServiceRequest req) {
+        BarberService service = find(id);
+        BigDecimal reserve = req.reserveAmount() == null ? BigDecimal.ZERO : req.reserveAmount();
+        if (reserve.compareTo(req.price()) > 0) {
+            throw ApiException.badRequest(RESERVE_TOO_HIGH);
+        }
+        String name = req.name().trim();
+        int minutes = req.durationMinutes() == null ? 30 : req.durationMinutes();
+        service.update(name, orDefault(req.shortName(), name), orDefault(req.description(), name),
+            blankToNull(req.includes()), req.price(), orDefault(req.durationLabel(), minutes + " min"), minutes,
+            orDefault(req.icon(), "content_cut"), blankToNull(req.imageUrl()), reserve);
+        return ServiceResponse.from(service);
     }
 
     @Transactional

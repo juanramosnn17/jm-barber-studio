@@ -73,6 +73,17 @@ class UsuariosTest {
     }
 
     @Test
+    void filtroPorRolCuentaSoloEseRol() throws Exception {
+        crear("Bruno", "Barbero", Role.BARBERO);
+        mvc.perform(get("/api/v1/users").param("role", "BARBERO").header("Authorization", adminToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.rows[*].role", org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is("BARBERO"))))
+            .andExpect(jsonPath("$.total").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)));
+        mvc.perform(get("/api/v1/users").param("role", "JEFE").header("Authorization", adminToken))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void clienteYBarberoNoAdministranUsuarios() throws Exception {
         String barbero = bearer(crear("Bruno", "Barbero", Role.BARBERO));
         for (String token : new String[] {clienteToken, barbero}) {

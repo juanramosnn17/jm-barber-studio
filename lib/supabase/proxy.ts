@@ -2,6 +2,7 @@
    RENOVACIÓN DE SESIÓN Y PROTECCIÓN DE RUTAS (lib/supabase/proxy.ts)
    ---------------------------------------------------------------------
    Invocado por proxy.ts (raíz del proyecto) ANTES de cada página. Lo usamos para:
+     0. Con API_URL (Spring Boot, tarea 4.9): validar el JWT con GET /auth/me.
      1. Renovar y validar automáticamente la sesión de Supabase (tokens/cookies).
      2. Validar la cookie de sesión híbrida ('jm_user_session').
      3. Proteger las rutas privadas (/cliente y /admin): si alguien sin
@@ -11,6 +12,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { findUserById } from "@/lib/data/store";
+import { API_TOKEN_COOKIE, API_URL, isApiConfigured } from "@/lib/api/config";
 import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "./env";
 
 // Rutas que requieren haber iniciado sesión.
@@ -26,7 +28,29 @@ export async function updateSession(request: NextRequest) {
   let isLoggedIn = false;
   let userRole: string | null = null;
 
-  if (!isSupabaseConfigured()) {
+  if (isApiConfigured()) {
+    // MODO API SPRING BOOT (tarea 4.9): el JWT está en la cookie httpOnly y la API
+    // confirma la sesión y el rol ACTUAL de la base con GET /auth/me.
+    const token = request.cookies.get(API_TOKEN_COOKIE)?.value;
+    if (token) {
+      try {
+        const res = await fetch(`${API_URL}/api/v1/auth/me`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const me = (await res.json()) as { role?: string };
+          isLoggedIn = true;
+          userRole = me.role ? me.role.toLowerCase() : null;
+        } else if (res.status === 401) {
+          // Token vencido, inválido o de una cuenta eliminada: se borra la cookie
+          response.cookies.delete(API_TOKEN_COOKIE);
+        }
+      } catch {
+        // API caída: se trata como sin sesión, pero no se borra la cookie
+      }
+    }
+  } else if (!isSupabaseConfigured()) {
     // MODO DEMO (sin Supabase): la sesión es la cookie local 'jm_user_session'
     const localSessionCookie = request.cookies.get("jm_user_session")?.value?.trim();
     isLoggedIn = Boolean(localSessionCookie);

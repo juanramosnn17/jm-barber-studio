@@ -98,6 +98,22 @@ public class BarberService {
     public int getSortOrder() { return sortOrder; }
     public BigDecimal getReserveAmount() { return reserveAmount; }
 
+    /** Edición completa (PUT). No toca isActive ni sortOrder; las citas ya cobradas conservan sus montos. */
+    public void update(String name, String shortName, String description, String includes, BigDecimal price,
+                       String durationLabel, int durationMinutes, String icon, String imageUrl,
+                       BigDecimal reserveAmount) {
+        this.name = name;
+        this.shortName = shortName;
+        this.description = description;
+        this.includes = includes;
+        this.price = price;
+        this.durationLabel = durationLabel;
+        this.durationMinutes = durationMinutes;
+        this.icon = icon;
+        this.imageUrl = imageUrl;
+        this.reserveAmount = reserveAmount;
+    }
+
     public void toggleActive() { this.active = !this.active; }
     public void setReserveAmount(BigDecimal reserveAmount) { this.reserveAmount = reserveAmount; }
 }

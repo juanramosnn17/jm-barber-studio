@@ -55,9 +55,9 @@
 > Orden: 3.27 → 3.28 → 3.29 → 3.30 → 3.31. Spec: `docs/specs/F5-contabilidad-y-ganancias.md` → "Modelo contable de la barbería".
 - [ ] 3.27 Reserva fija por servicio sin comisión: columna `services.reserve_amount` (editable en `/admin/servicios`), `appointments.reserve_amount` fijada al completar, y motor contable con Ingresos · Reserva · Tu ganancia · Gastos · Saldo de la reserva. **Código y base hechos; falta verificar en producción.**
 - [x] 3.28 Simplificar pantallas de contabilidad: 5 tarjetas, sin "barbero" ni márgenes %, periodos reducidos y tabla de 6 columnas con fila clicable. Verificado por el estudiante en producción (y ajustado a su pedido: sin encabezado, sin perfil en el menú, movimientos solo con dinero real).
-- [ ] 3.29 Categoría "Compra de insumos / productos" en gastos y propinas por cita (aparte de los ingresos).
-- [ ] 3.30 Venta de productos: nueva tabla `product_sales` con registrar, anular y eliminar; suma a Ingresos. *(Backend Spring Boot listo y probado el 2026-11-20: migración V2, `/product-sales` y reporte. Falta la pantalla, en la 4.9, y verificarla en el navegador, en la 4.10.)*
-- [ ] 3.31 Cierre de caja del día por método de pago y efectivo esperado en caja. *(Backend Spring Boot listo y probado el 2026-11-20: `GET /accounting/cash-closing`. Falta la pantalla, en la 4.9, y verificarla en el navegador, en la 4.10.)*
+- [x] 3.29 Categoría "Compra de insumos / productos" en gastos y propinas por cita (aparte de los ingresos). *(Verificada en el navegador con Spring Boot el 2026-11-21: la categoría aparece al registrar un gasto, y una propina de $3.000 se muestra aparte sin cambiar Ingresos ni Reserva.)*
+- [x] 3.30 Venta de productos: nueva tabla `product_sales` con registrar, anular y eliminar; suma a Ingresos. *(Verificada en el navegador con Spring Boot el 2026-11-21: venta de $18.000 por Nequi → Ingresos y Tu ganancia +$18.000; anulada, deja de sumar. Eliminar se probó con las pruebas automáticas.)*
+- [x] 3.31 Cierre de caja del día por método de pago y efectivo esperado en caja. *(Verificada en el navegador con Spring Boot el 2026-11-21: $20.000 en efectivo + $3.000 de propina − $5.000 de gasto en efectivo = $18.000 en caja, y Nequi $18.000.)*
 
 ## Back · Spring Boot + MySQL (Unidad 4)
 > El curso exige el backend en **Spring Boot**. Reemplaza a Supabase con las mismas reglas (specs F1–F5). Contrato: `docs/contratos/api-rest.md`. Código en `backend/`. Una tarea a la vez: cada una se prueba (pruebas automáticas + navegador/Postman) antes de pasar a la siguiente.
@@ -70,10 +70,10 @@
 - [x] 4.6 Usuarios (admin): listado paginado, editar datos y rol, eliminar; el admin no puede eliminarse ni quitarse el rol.
 - [x] 4.7 Gastos: registrar, editar, anular con motivo y eliminar; ajuste de pago de citas (método, descuento, reembolso, propina).
 - [x] 4.8 Contabilidad: reporte con el modelo de reserva (Ingresos · Tu ganancia · Reserva · Gastos · Saldo) y exportación CSV saneada.
-- [ ] 4.9 Conectar Next.js: cliente HTTP en `lib/api/`, las Server Actions y consultas llaman a la API, token JWT en cookie `httpOnly`, y `proxy.ts` valida la sesión con `GET /auth/me`. El modo demo (store en memoria) se mantiene cuando `API_URL` no está definida.
+- [x] 4.9 Conectar Next.js: cliente HTTP en `lib/api/`, las Server Actions y consultas llaman a la API, token JWT en cookie `httpOnly`, y `proxy.ts` valida la sesión con `GET /auth/me`. El modo demo (store en memoria) se mantiene cuando `API_URL` no está definida.
 - [ ] 4.10 Verificar en el navegador todos los criterios de F1–F5 contra el backend Spring Boot y registrar el resultado en `docs/verificacion-springboot.md`.
 - [ ] 4.11 Retirar Supabase del frontend (dependencias, variables y archivos `lib/supabase/*`) cuando 4.10 esté completa. El despliegue del backend en AWS queda para la Unidad 6.
-- [ ] 4.12 Alineación con `docs/datos/modelo.md` (migración Flyway `V3`): `PUT /services/{id}` para editar servicios/duración, columna `appointments.end_time` con validación de no solapamiento y `GET /appointments/booked-ranges`, `ON DELETE SET NULL` en `appointments.client_id` (cancelando citas futuras al borrar usuario) y bloqueo `403` para que `BARBERO` no modifique citas `COMPLETADA`. Ver `docs/contratos/api-rest.md` §9.
+- [ ] 4.12 Alineación con `docs/datos/modelo.md` (migración Flyway `V3`). `PUT /services/{id}` ya se hizo en la 4.9. Falta: columna `appointments.end_time` con validación de no solapamiento y `GET /appointments/booked-ranges`, `ON DELETE SET NULL` en `appointments.client_id` (cancelando citas futuras al borrar usuario) y bloqueo `403` para que `BARBERO` no modifique citas `COMPLETADA`. Ver `docs/contratos/api-rest.md` §9.
 
 ## Back (U4) · Plan de instalaciones (Supabase + Next.js)
 > Orden: configuración → inicio de sesión → lecturas públicas → escrituras → auditoría.

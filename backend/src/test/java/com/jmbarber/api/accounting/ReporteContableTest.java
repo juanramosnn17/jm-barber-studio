@@ -119,6 +119,9 @@ class ReporteContableTest {
         cita("2020-03-11", "10:00", "COMPLETADA", "REEMBOLSADO", 25000, 0, 25000, 0, 5000); // reembolso total
         cita("2020-03-12", "10:00", "COMPLETADA", "PAGADO", 25000, 22000, 0, 0, 5000); // la reserva no supera el neto
 
+        reporte(MARZO + "&size=1")
+            .andExpect(jsonPath("$.transactions.rows[0].discount").value(22000)) // detalle para ajustar el pago
+            .andExpect(jsonPath("$.transactions.rows[0].category").doesNotExist());
         reporte(MARZO)
             .andExpect(jsonPath("$.summary.income").value(23000))          // 20.000 + 0 + 3.000
             .andExpect(jsonPath("$.summary.businessReserve").value(8000))  // 5.000 + 0 + min(5.000, 3.000)

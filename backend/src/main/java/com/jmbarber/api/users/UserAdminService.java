@@ -25,10 +25,13 @@ public class UserAdminService {
     }
 
     @Transactional(readOnly = true)
-    public UsersPage list(int page, int size) {
+    public UsersPage list(int page, int size, Role role) {
         int safePage = Math.max(1, page);
         int safeSize = Math.min(50, Math.max(1, size));
-        Page<User> result = users.findAllForAdmin(PageRequest.of(safePage - 1, safeSize));
+        PageRequest request = PageRequest.of(safePage - 1, safeSize);
+        Page<User> result = role == null
+            ? users.findAllForAdmin(request)
+            : users.findByRoleOrderByFirstNameAscLastNameAsc(role, request);
         return new UsersPage(result.map(UserDto::from).getContent(), result.getTotalElements());
     }
 

@@ -12,8 +12,10 @@
      - Guardado y actualización de horarios de atención (admin -> cliente)
      - Creación y activación de servicios (admin -> cliente)
 
-   Modo dual (tareas 3.12 y 3.16):
-     - Con Supabase configurado, cada acción escribe SOLO en Supabase y
+   Modo de datos (tareas 3.12, 3.16 y 4.9):
+     - Con API_URL, cada acción llama SOLO a la API Spring Boot y devuelve
+       su mensaje de error en español (contrato §8).
+     - Si no, con Supabase configurado, cada acción escribe SOLO en Supabase y
        revisa el resultado: si hay error o no se afectó ninguna fila
        (por ejemplo, porque RLS lo impidió), responde { ok: false }.
      - Sin Supabase (modo demo), escribe en el store en memoria.
@@ -26,7 +28,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { clearSessionUser, getSessionUserProfile, setSessionUser } from "@/lib/auth/session";
-import { getCurrentProfile } from "@/lib/data/queries";
+import { getBusinessHours, getCurrentProfile } from "@/lib/data/queries";
+import { isApiConfigured } from "@/lib/api/config";
+import { apiRequest, clearApiToken, setApiToken } from "@/lib/api/client";
+import { fromBusinessHours, upper, type ApiAppointment, type ApiUser } from "@/lib/api/mappers";
 import { isPastSlot } from "@/lib/schedule";
 import {
   addStoredAppointment,
@@ -40,6 +45,7 @@ import {
   updateStoredAppointmentStatus,
   updateStoredBusinessHours,
   getStoredServices,
+  updateStoredService,
   updateStoredUser,
   deleteStoredUser,
   findStoredExpense,
@@ -76,6 +82,15 @@ async function requireRole(allowed: UserRole[]) {
   return profile;
 }
 
+/** Mensaje para funciones que solo existen en el backend Spring Boot (contrato §8). */
+const API_ONLY_MESSAGE = "Esta función requiere el backend Spring Boot (API_URL).";
+
+/** Pesos enteros desde un campo del formulario o un número ("" o inválido → 0). */
+function toPesos(value: unknown): number {
+  const n = Math.round(Number(value));
+  return Number.isFinite(n) ? n : 0;
+}
+
 /** Registra el error de Supabase en el servidor y devuelve un resultado fallido. */
 function supabaseFailure(context: string, detail?: string): ActionResult {
   console.error(`${context}:`, detail ?? "ninguna fila afectada");
@@ -98,6 +113,19 @@ export async function loginAction(
 
   if (!emailOrPhone || !password) {
     return { ok: false, message: "Por favor ingresa correo o teléfono y tu contraseña." };
+  }
+
+  // 0. Con la API Spring Boot: el token se guarda en la cookie httpOnly
+  if (isApiConfigured()) {
+    const res = await apiRequest<{ token: string; user: ApiUser }>("/auth/login", {
+      method: "POST",
+      body: { email: emailOrPhone.trim(), password },
+    });
+    if (!res.ok) return { ok: false, message: res.message };
+    await setApiToken(res.data.token);
+    if (safeReturnUrl) redirect(safeReturnUrl);
+    const role = res.data.user.role;
+    redirect(role === "ADMIN" || role === "BARBERO" ? "/admin" : "/cliente");
   }
 
   // 1. Con Supabase: solo Supabase Auth (sin respaldo en el store local)
@@ -170,6 +198,27 @@ export async function registerAction(
     return { ok: false, message: "Las contraseñas no coinciden." };
   }
 
+  // 0. Con la API Spring Boot: el rol siempre es CLIENTE (lo fija la API) y se inicia sesión de inmediato
+  if (isApiConfigured()) {
+    const res = await apiRequest<{ token: string; user: ApiUser }>("/auth/register", {
+      method: "POST",
+      body: {
+        firstName: firstName.trim(),
+        lastName: (lastName || "").trim(),
+        email: email.trim(),
+        phone: phone ? `+57 ${phone.trim()}` : null,
+        password,
+        confirmPassword,
+        acceptsDataUse: formData.get("terms") === "on",
+      },
+    });
+    if (!res.ok) return { ok: false, message: res.message };
+    await setApiToken(res.data.token);
+    revalidatePath("/");
+    revalidatePath("/cliente");
+    redirect("/cliente");
+  }
+
   // 1. Con Supabase: registrar solo en Auth (el trigger crea el perfil como 'cliente')
   if (isSupabaseConfigured()) {
     const supabase = await createClient();
@@ -228,6 +277,7 @@ export async function registerAction(
  */
 export async function logoutAction() {
   await clearSessionUser();
+  await clearApiToken(); // JWT de la API: el token deja de enviarse desde este navegador
 
   if (isSupabaseConfigured()) {
     try {
@@ -262,6 +312,18 @@ export async function createAppointmentAction(
   // No se reserva en el pasado (hora de Colombia). Tarea 3.18 / spec F2.
   if (isPastSlot(date, normalizedTime)) {
     return { ok: false, message: "No puedes reservar en una fecha u hora que ya pasó." };
+  }
+
+  // 0. Con la API Spring Boot: la API valida el horario, el pasado y el turno ocupado (409)
+  if (isApiConfigured()) {
+    const res = await apiRequest<ApiAppointment>("/appointments", {
+      method: "POST",
+      body: { serviceId, date, time: normalizedTime, notes: notes?.trim() || null },
+    });
+    if (!res.ok) return { ok: false, message: res.message };
+    revalidatePath("/cliente");
+    revalidatePath("/admin");
+    return { ok: true, message: "¡Tu cita ha sido reservada exitosamente!", appointmentId: res.data.id };
   }
 
   const defaultBarber = "Pendiente de asignación";
@@ -354,8 +416,8 @@ export async function updateAppointmentStatusAction(
   if (!user) return { ok: false, message: FORBIDDEN_MESSAGE };
   if (user.role === "cliente") {
     if (newStatus !== "cancelada") return { ok: false, message: FORBIDDEN_MESSAGE };
-    // En Supabase, RLS ya limita al cliente a sus propias citas; en demo se verifica aquí.
-    if (!isSupabaseConfigured()) {
+    // En la API y en Supabase el servidor limita al cliente a sus propias citas; en demo se verifica aquí.
+    if (!isApiConfigured() && !isSupabaseConfigured()) {
       const own = getAllStoredAppointments().some(
         (a) => a.id === appointmentId && a.client_id === user.id
       );
@@ -363,7 +425,14 @@ export async function updateAppointmentStatusAction(
     }
   }
 
-  if (isSupabaseConfigured()) {
+  if (isApiConfigured()) {
+    // Al completar, la API fija el pago en efectivo y la reserva del servicio
+    const res = await apiRequest(`/appointments/${encodeURIComponent(appointmentId)}/status`, {
+      method: "PATCH",
+      body: { status: upper(newStatus) },
+    });
+    if (!res.ok) return { ok: false, message: res.message };
+  } else if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const updatePayload: Record<string, unknown> = { status: newStatus };
     if (newStatus === "completada") {
@@ -410,22 +479,93 @@ export async function updateBusinessHoursAction(
     return { ok: false, message: FORBIDDEN_MESSAGE };
   }
 
-  if (isSupabaseConfigured()) {
+  // Validación en servidor según docs/contratos/api.md y docs/datos/modelo.md (T-B4)
+  const current = await getBusinessHours();
+  const merged: BusinessHours = {
+    ...current,
+    ...hoursData,
+    open_days: hoursData.open_days
+      ? Array.from(new Set(hoursData.open_days.map((d) => Math.trunc(Number(d)))))
+      : current.open_days,
+    open_time: (hoursData.open_time ?? current.open_time).trim().slice(0, 5),
+    close_time: (hoursData.close_time ?? current.close_time).trim().slice(0, 5),
+    break_start:
+      hoursData.break_start === undefined
+        ? current.break_start
+        : hoursData.break_start?.trim().slice(0, 5) || null,
+    break_end:
+      hoursData.break_end === undefined
+        ? current.break_end
+        : hoursData.break_end?.trim().slice(0, 5) || null,
+    slot_minutes:
+      hoursData.slot_minutes === undefined
+        ? current.slot_minutes
+        : Math.round(Number(hoursData.slot_minutes)),
+  };
+
+  const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+  const invalidDays =
+    merged.open_days.length === 0 ||
+    merged.open_days.some((d) => !Number.isInteger(d) || d < 0 || d > 6);
+  const invalidTimes =
+    !timePattern.test(merged.open_time) ||
+    !timePattern.test(merged.close_time) ||
+    merged.open_time >= merged.close_time;
+  const hasBreakStart = Boolean(merged.break_start);
+  const hasBreakEnd = Boolean(merged.break_end);
+  const invalidBreak =
+    hasBreakStart !== hasBreakEnd ||
+    (hasBreakStart &&
+      hasBreakEnd &&
+      (!timePattern.test(merged.break_start!) ||
+        !timePattern.test(merged.break_end!) ||
+        merged.break_start! < merged.open_time ||
+        merged.break_start! >= merged.break_end! ||
+        merged.break_end! > merged.close_time));
+  const invalidSlot =
+    !Number.isFinite(merged.slot_minutes) ||
+    merged.slot_minutes < 10 ||
+    merged.slot_minutes > 120;
+
+  if (invalidDays || invalidTimes || invalidBreak || invalidSlot) {
+    return {
+      ok: false,
+      message: "Revisa los días, el horario de atención, el almuerzo y la duración de los bloques.",
+    };
+  }
+
+  const sanitizedUpdate = {
+    open_days: merged.open_days,
+    open_time: merged.open_time,
+    close_time: merged.close_time,
+    break_start: merged.break_start,
+    break_end: merged.break_end,
+    slot_minutes: merged.slot_minutes,
+  };
+
+  if (isApiConfigured()) {
+    const res = await apiRequest("/business-hours", {
+      method: "PUT",
+      body: fromBusinessHours(merged),
+    });
+    if (!res.ok) return { ok: false, message: res.message };
+  } else if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("business_hours")
-      .update(hoursData)
+      .update(sanitizedUpdate)
       .eq("id", 1)
       .select("id");
     if (error || !data?.length) {
       return supabaseFailure("Error guardando horario en Supabase", error?.message);
     }
   } else {
-    updateStoredBusinessHours(hoursData);
+    updateStoredBusinessHours(sanitizedUpdate);
   }
 
   revalidatePath("/cliente");
   revalidatePath("/admin");
+  revalidatePath("/admin/horarios");
   return { ok: true, message: "Horarios actualizados correctamente." };
 }
 
@@ -437,7 +577,10 @@ export async function toggleServiceActiveAction(serviceId: string): Promise<Acti
     return { ok: false, message: FORBIDDEN_MESSAGE };
   }
 
-  if (isSupabaseConfigured()) {
+  if (isApiConfigured()) {
+    const res = await apiRequest(`/services/${encodeURIComponent(serviceId)}/active`, { method: "PATCH" });
+    if (!res.ok) return { ok: false, message: res.message };
+  } else if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const { data: current, error: readError } = await supabase
       .from("services")
@@ -475,24 +618,34 @@ export async function createServiceAction(
     return { ok: false, message: FORBIDDEN_MESSAGE };
   }
 
-  const name = formData.get("name") as string;
-  const shortName = formData.get("short_name") as string;
-  const description = formData.get("description") as string;
-  const includes = formData.get("includes") as string;
-  const price = parseFloat(formData.get("price") as string) || 0;
-  const durationLabel = formData.get("duration_label") as string || "30 min";
-  const durationMinutes = parseInt(formData.get("duration_minutes") as string, 10) || 30;
-  const icon = (formData.get("icon") as string) || "content_cut";
-  let imageUrl = (formData.get("image_url") as string) || "/images/servicios/corte-cabello.jpg";
+  const name = ((formData.get("name") as string) ?? "").trim();
+  const shortName = ((formData.get("short_name") as string) ?? "").trim();
+  const description = ((formData.get("description") as string) ?? "").trim();
+  const includes = ((formData.get("includes") as string) ?? "").trim();
+  const price = Math.round(Number(formData.get("price")));
+  const reserveRaw = formData.get("reserve_amount");
+  const reserveAmount = reserveRaw === null || reserveRaw === "" ? 0 : Math.round(Number(reserveRaw));
+  const durationMinutes = Math.round(Number(formData.get("duration_minutes")));
+  const durationLabel =
+    ((formData.get("duration_label") as string) ?? "").trim() ||
+    (Number.isFinite(durationMinutes) && durationMinutes > 0 ? `${durationMinutes} min` : "30 min");
+  const icon = ((formData.get("icon") as string) ?? "").trim() || "content_cut";
+  let imageUrl =
+    ((formData.get("image_url") as string) ?? "").trim() || "/images/servicios/corte-cabello.jpg";
 
-  // Si se subió un archivo o se ingresó una URL personalizada
-  const customImg = formData.get("custom_image_url") as string;
-  if (customImg && customImg.trim().length > 0) {
-    imageUrl = customImg.trim();
+  const customImg = ((formData.get("custom_image_url") as string) ?? "").trim();
+  if (customImg.length > 0) {
+    imageUrl = customImg;
   }
 
-  if (!name || !price) {
-    return { ok: false, message: "Nombre y precio son obligatorios." };
+  if (!name || !Number.isFinite(price) || price <= 0) {
+    return { ok: false, message: "Nombre y precio válido son obligatorios." };
+  }
+  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+    return { ok: false, message: "La duración debe ser mayor a cero minutos." };
+  }
+  if (!Number.isFinite(reserveAmount) || reserveAmount < 0 || reserveAmount > price) {
+    return { ok: false, message: "La reserva debe estar entre $0 y el precio del servicio." };
   }
 
   const newServiceData: Omit<Service, "id" | "sort_order"> = {
@@ -501,6 +654,7 @@ export async function createServiceAction(
     description: description || "Servicio profesional de cuidado masculino.",
     includes: includes || null,
     price,
+    reserve_amount: reserveAmount,
     duration_label: durationLabel,
     duration_minutes: durationMinutes,
     image_url: imageUrl,
@@ -508,7 +662,23 @@ export async function createServiceAction(
     is_active: true,
   };
 
-  if (isSupabaseConfigured()) {
+  if (isApiConfigured()) {
+    const res = await apiRequest("/services", {
+      method: "POST",
+      body: {
+        name: newServiceData.name,
+        shortName: newServiceData.short_name,
+        description: newServiceData.description,
+        includes: newServiceData.includes,
+        price: newServiceData.price,
+        durationLabel: newServiceData.duration_label,
+        durationMinutes: newServiceData.duration_minutes,
+        icon: newServiceData.icon,
+        imageUrl: newServiceData.image_url,
+      },
+    });
+    if (!res.ok) return { ok: false, message: res.message };
+  } else if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const { data, error } = await supabase.from("services").insert(newServiceData).select("id");
     if (error || !data?.length) {
@@ -521,7 +691,106 @@ export async function createServiceAction(
   revalidatePath("/");
   revalidatePath("/cliente");
   revalidatePath("/admin");
+  revalidatePath("/admin/servicios");
   return { ok: true, message: "Servicio creado exitosamente." };
+}
+
+/**
+ * Editar un servicio existente (nombre, precio, duración, reserva, imagen).
+ * Solo afecta reservas y cobros nuevos; el historial conserva sus valores congelados (T-B4).
+ */
+export async function updateServiceAction(
+  serviceId: string,
+  formData: FormData
+): Promise<ActionResult> {
+  if (!(await requireRole(["admin"]))) {
+    return { ok: false, message: FORBIDDEN_MESSAGE };
+  }
+  if (!serviceId?.trim()) {
+    return { ok: false, message: "No se encontró el servicio." };
+  }
+
+  const name = ((formData.get("name") as string) ?? "").trim();
+  const shortName = ((formData.get("short_name") as string) ?? "").trim();
+  const description = ((formData.get("description") as string) ?? "").trim();
+  const includes = ((formData.get("includes") as string) ?? "").trim();
+  const price = Math.round(Number(formData.get("price")));
+  const reserveRaw = formData.get("reserve_amount");
+  const reserveAmount = reserveRaw === null || reserveRaw === "" ? 0 : Math.round(Number(reserveRaw));
+  const durationMinutes = Math.round(Number(formData.get("duration_minutes")));
+  const durationLabel =
+    ((formData.get("duration_label") as string) ?? "").trim() ||
+    (Number.isFinite(durationMinutes) && durationMinutes > 0 ? `${durationMinutes} min` : "30 min");
+  const icon = ((formData.get("icon") as string) ?? "").trim() || "content_cut";
+  let imageUrl =
+    ((formData.get("image_url") as string) ?? "").trim() || "/images/servicios/corte-cabello.jpg";
+
+  const customImg = ((formData.get("custom_image_url") as string) ?? "").trim();
+  if (customImg.length > 0) {
+    imageUrl = customImg;
+  }
+
+  if (!name || !Number.isFinite(price) || price <= 0) {
+    return { ok: false, message: "Nombre y precio válido son obligatorios." };
+  }
+  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+    return { ok: false, message: "La duración debe ser mayor a cero minutos." };
+  }
+  if (!Number.isFinite(reserveAmount) || reserveAmount < 0 || reserveAmount > price) {
+    return { ok: false, message: "La reserva debe estar entre $0 y el precio del servicio." };
+  }
+
+  const changes = {
+    name,
+    short_name: shortName || name,
+    description: description || "Servicio profesional de cuidado masculino.",
+    includes: includes || null,
+    price,
+    reserve_amount: reserveAmount,
+    duration_label: durationLabel,
+    duration_minutes: durationMinutes,
+    image_url: imageUrl,
+    icon,
+  };
+
+  if (isApiConfigured()) {
+    const res = await apiRequest(`/services/${encodeURIComponent(serviceId)}`, {
+      method: "PUT",
+      body: {
+        name: changes.name,
+        shortName: changes.short_name,
+        description: changes.description,
+        includes: changes.includes,
+        price: changes.price,
+        reserveAmount: changes.reserve_amount,
+        durationLabel: changes.duration_label,
+        durationMinutes: changes.duration_minutes,
+        icon: changes.icon,
+        imageUrl: changes.image_url,
+      },
+    });
+    if (!res.ok) return { ok: false, message: res.message };
+  } else if (isSupabaseConfigured()) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("services")
+      .update(changes)
+      .eq("id", serviceId)
+      .select("id");
+    if (error || !data?.length) {
+      return supabaseFailure("Error actualizando servicio en Supabase", error?.message);
+    }
+  } else {
+    const updated = updateStoredService(serviceId, changes);
+    if (!updated) return { ok: false, message: "No se encontró el servicio." };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/cliente");
+  revalidatePath("/admin");
+  revalidatePath("/admin/servicios");
+  revalidatePath(ACCOUNTING_PATH);
+  return { ok: true, message: "Servicio actualizado correctamente." };
 }
 
 /**
@@ -548,7 +817,19 @@ export async function updateUserAction(
     return { ok: false, message: "Nombre y correo son obligatorios." };
   }
 
-  if (isSupabaseConfigured()) {
+  if (isApiConfigured()) {
+    const res = await apiRequest(`/users/${encodeURIComponent(userId)}`, {
+      method: "PUT",
+      body: {
+        firstName: data.first_name,
+        lastName: data.last_name,
+        email: data.email,
+        phone: data.phone || null,
+        role: upper(data.role),
+      },
+    });
+    if (!res.ok) return { ok: false, message: res.message };
+  } else if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const { data: rows, error } = await supabase
       .from("profiles")
@@ -582,6 +863,15 @@ export async function deleteUserAction(userId: string): Promise<ActionResult> {
   }
   if (!userId) {
     return { ok: false, message: "ID de usuario inválido." };
+  }
+
+  if (isApiConfigured()) {
+    // La API rechaza con 409 que el admin se elimine a sí mismo; sus citas se borran en cascada
+    const res = await apiRequest(`/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
+    if (!res.ok) return { ok: false, message: res.message };
+    revalidatePath("/admin");
+    revalidatePath("/admin/usuarios");
+    return { ok: true, message: "Usuario eliminado con éxito." };
   }
 
   if (isSupabaseConfigured()) {
@@ -637,7 +927,21 @@ export async function createExpenseAction(
     };
   }
 
-  if (isSupabaseConfigured()) {
+  if (isApiConfigured()) {
+    const res = await apiRequest("/expenses", {
+      method: "POST",
+      body: {
+        date,
+        time,
+        category: upper(category),
+        concept,
+        amount: Math.round(amount),
+        paymentMethod: upper(paymentMethod),
+        reference,
+      },
+    });
+    if (!res.ok) return { ok: false, message: res.message };
+  } else if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("expenses")
@@ -687,7 +991,13 @@ export async function voidExpenseAction(expenseId: string, reason: string): Prom
   const cleanReason = (reason ?? "").trim();
   if (!cleanReason) return { ok: false, message: "Escribe el motivo de la anulación." };
 
-  if (isSupabaseConfigured()) {
+  if (isApiConfigured()) {
+    const res = await apiRequest(`/expenses/${encodeURIComponent(expenseId)}/void`, {
+      method: "POST",
+      body: { reason: cleanReason },
+    });
+    if (!res.ok) return { ok: false, message: res.message };
+  } else if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("expenses")
@@ -741,7 +1051,22 @@ export async function updateExpenseAction(
     reference: (input.reference ?? "").trim() || null,
   };
 
-  if (isSupabaseConfigured()) {
+  if (isApiConfigured()) {
+    // PUT reemplaza el gasto completo: se envían todos los campos (contrato §6)
+    const res = await apiRequest(`/expenses/${encodeURIComponent(expenseId)}`, {
+      method: "PUT",
+      body: {
+        date: changes.date,
+        time: changes.time,
+        category: upper(changes.category),
+        concept: changes.concept,
+        amount: changes.amount,
+        paymentMethod: upper(changes.payment_method),
+        reference: changes.reference,
+      },
+    });
+    if (!res.ok) return { ok: false, message: res.message };
+  } else if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("expenses")
@@ -768,7 +1093,10 @@ export async function updateExpenseAction(
 export async function deleteExpenseAction(expenseId: string): Promise<ActionResult> {
   if (!(await requireRole(["admin"]))) return { ok: false, message: FORBIDDEN_MESSAGE };
 
-  if (isSupabaseConfigured()) {
+  if (isApiConfigured()) {
+    const res = await apiRequest(`/expenses/${encodeURIComponent(expenseId)}`, { method: "DELETE" });
+    if (!res.ok) return { ok: false, message: res.message };
+  } else if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const { data, error } = await supabase.from("expenses").delete().eq("id", expenseId).select("id");
     if (error || !data?.length) {
@@ -787,7 +1115,13 @@ export async function deleteExpenseAction(expenseId: string): Promise<ActionResu
  */
 export async function adjustAppointmentPaymentAction(
   appointmentId: string,
-  input: { payment_method: PaymentMethod; discount_amount: number; refund_amount: number }
+  input: {
+    payment_method: PaymentMethod;
+    discount_amount: number;
+    refund_amount: number;
+    /** Propina (tarea 3.29): solo se guarda con la API Spring Boot. */
+    tip_amount?: number;
+  }
 ): Promise<ActionResult> {
   if (!(await requireRole(["admin"]))) return { ok: false, message: FORBIDDEN_MESSAGE };
 
@@ -800,7 +1134,18 @@ export async function adjustAppointmentPaymentAction(
   const tooMuch = "El descuento y el reembolso no pueden superar el valor del servicio.";
   const notCompleted = "Solo se puede ajustar el pago de una cita completada.";
 
-  if (isSupabaseConfigured()) {
+  if (isApiConfigured()) {
+    const res = await apiRequest(`/appointments/${encodeURIComponent(appointmentId)}/payment`, {
+      method: "PATCH",
+      body: {
+        paymentMethod: upper(input.payment_method),
+        discountAmount: discount,
+        refundAmount: refund,
+        tipAmount: toPesos(input.tip_amount),
+      },
+    });
+    if (!res.ok) return { ok: false, message: res.message };
+  } else if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const { data: app, error: readError } = await supabase
       .from("appointments")
@@ -860,7 +1205,13 @@ export async function updateServiceReserveAction(
     return { ok: false, message: "La reserva debe ser un monto igual o mayor a cero." };
   }
 
-  if (isSupabaseConfigured()) {
+  if (isApiConfigured()) {
+    const res = await apiRequest(`/services/${encodeURIComponent(serviceId)}/reserve`, {
+      method: "PATCH",
+      body: { reserveAmount: value },
+    });
+    if (!res.ok) return { ok: false, message: res.message };
+  } else if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const { data: srv, error: readError } = await supabase
       .from("services")
@@ -891,4 +1242,56 @@ export async function updateServiceReserveAction(
   revalidatePath("/admin/servicios");
   revalidatePath(ACCOUNTING_PATH);
   return { ok: true, message: "Reserva actualizada." };
+}
+
+/* ---------------------------------------------------------------------
+   VENTAS DE PRODUCTOS (tarea 3.30) · solo admin · solo con la API Spring Boot
+   --------------------------------------------------------------------- */
+
+/** Registrar una venta de producto: suma a Ingresos y a Tu ganancia, no aparta reserva. */
+export async function createProductSaleAction(formData: FormData): Promise<ActionResult> {
+  if (!(await requireRole(["admin"]))) return { ok: false, message: FORBIDDEN_MESSAGE };
+  if (!isApiConfigured()) return { ok: false, message: API_ONLY_MESSAGE };
+
+  const res = await apiRequest("/product-sales", {
+    method: "POST",
+    body: {
+      date: ((formData.get("date") as string) ?? "").trim() || null,
+      time: ((formData.get("time") as string) ?? "").trim() || null,
+      concept: ((formData.get("concept") as string) ?? "").trim(),
+      amount: toPesos(formData.get("amount")),
+      paymentMethod: upper((formData.get("payment_method") as string) || "efectivo"),
+    },
+  });
+  if (!res.ok) return { ok: false, message: res.message };
+
+  revalidatePath(ACCOUNTING_PATH);
+  return { ok: true, message: "Venta registrada. Ya suma en Ingresos." };
+}
+
+/** Anular una venta con motivo: se conserva visible pero deja de sumar. */
+export async function voidProductSaleAction(saleId: string, reason: string): Promise<ActionResult> {
+  if (!(await requireRole(["admin"]))) return { ok: false, message: FORBIDDEN_MESSAGE };
+  if (!isApiConfigured()) return { ok: false, message: API_ONLY_MESSAGE };
+
+  const res = await apiRequest(`/product-sales/${encodeURIComponent(saleId)}/void`, {
+    method: "POST",
+    body: { reason: (reason ?? "").trim() },
+  });
+  if (!res.ok) return { ok: false, message: res.message };
+
+  revalidatePath(ACCOUNTING_PATH);
+  return { ok: true, message: "Venta anulada. Ya no suma en los totales." };
+}
+
+/** Eliminar una venta definitivamente, sin rastro. */
+export async function deleteProductSaleAction(saleId: string): Promise<ActionResult> {
+  if (!(await requireRole(["admin"]))) return { ok: false, message: FORBIDDEN_MESSAGE };
+  if (!isApiConfigured()) return { ok: false, message: API_ONLY_MESSAGE };
+
+  const res = await apiRequest(`/product-sales/${encodeURIComponent(saleId)}`, { method: "DELETE" });
+  if (!res.ok) return { ok: false, message: res.message };
+
+  revalidatePath(ACCOUNTING_PATH);
+  return { ok: true, message: "Venta eliminada definitivamente." };
 }

@@ -42,6 +42,23 @@ public final class ServiceDtos {
     ) {
     }
 
+    /** PUT /services/{id}: mismos campos que crear más la reserva; reemplaza el servicio completo. */
+    public record UpdateServiceRequest(
+        @NotBlank(message = "Nombre y precio son obligatorios.") @Size(max = 120) String name,
+        @Size(max = 60) String shortName,
+        @Size(max = 2000) String description,
+        @Size(max = 255) String includes,
+        @NotNull(message = "Nombre y precio son obligatorios.")
+        @DecimalMin(value = "1", message = "El precio debe ser mayor a cero.") BigDecimal price,
+        @Size(max = 30) String durationLabel,
+        @Min(value = 5, message = "La duración debe ser de al menos 5 minutos.")
+        @Max(value = 480, message = "La duración no puede superar 8 horas.") Integer durationMinutes,
+        @Size(max = 60) String icon,
+        @Size(max = 255) String imageUrl,
+        @DecimalMin(value = "0", message = "La reserva debe ser un monto igual o mayor a cero.") BigDecimal reserveAmount
+    ) {
+    }
+
     public record ReserveRequest(
         @NotNull(message = "Indica el monto de la reserva.")
         @DecimalMin(value = "0", message = "La reserva debe ser un monto igual o mayor a cero.") BigDecimal reserveAmount

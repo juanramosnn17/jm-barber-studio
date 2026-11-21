@@ -2,7 +2,8 @@
    CONSULTAS DE DATOS (lib/data/queries.ts)
    ---------------------------------------------------------------------
    Todas las LECTURAS a la base de datos están aquí, en un solo lugar.
-   Si Supabase está configurado lee SOLO de la base de datos remota
+   Con API_URL lee SOLO de la API Spring Boot (tarea 4.9, contrato §8).
+   Si no, y Supabase está configurado, lee SOLO de la base de datos remota
    (sin mezclar datos de ejemplo ni del store; si falla, devuelve vacío);
    si no, lee del store en memoria reactivo (modo demo). Tarea 3.16.
    ===================================================================== */
@@ -12,6 +13,18 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { isApiConfigured } from "@/lib/api/config";
+import { apiRequest } from "@/lib/api/client";
+import {
+  toAppointment,
+  toBusinessHours,
+  toProfile,
+  toService,
+  type ApiAppointment,
+  type ApiBusinessHours,
+  type ApiService,
+  type ApiUser,
+} from "@/lib/api/mappers";
 import { toISODate } from "@/lib/format";
 import { getSessionUserProfile } from "@/lib/auth/session";
 import type {
@@ -72,6 +85,12 @@ const APPOINTMENT_SELECT =
    --------------------------------------------------------------------- */
 const fetchCurrentProfile = cache(
   async (demoRoleFallback?: UserRole): Promise<Profile | null> => {
+    // 0. Con la API Spring Boot, la sesión es el JWT de la cookie y el perfil sale de /auth/me
+    if (isApiConfigured()) {
+      const res = await apiRequest<ApiUser>("/auth/me");
+      return res.ok ? toProfile(res.data) : null;
+    }
+
     // 1. Con Supabase, la única fuente de sesión es Supabase Auth (se ignora la cookie demo)
     if (isSupabaseConfigured()) {
       const supabase = await createClient();
@@ -107,6 +126,16 @@ export async function getCurrentProfile(demoRoleFallback?: UserRole): Promise<Pr
    SERVICIOS
    --------------------------------------------------------------------- */
 export async function getServices(options: { onlyActive?: boolean } = {}): Promise<Service[]> {
+  if (isApiConfigured()) {
+    // La API devuelve los inactivos solo al admin; onlyActive=true los oculta también para él
+    const res = await apiRequest<ApiService[]>(`/services${options.onlyActive ? "?onlyActive=true" : ""}`);
+    if (!res.ok) {
+      console.error("Error al leer servicios de la API:", res.message);
+      return [];
+    }
+    return res.data.map(toService);
+  }
+
   if (!isSupabaseConfigured()) {
     return getStoredServices(options.onlyActive);
   }
@@ -127,6 +156,16 @@ export async function getServices(options: { onlyActive?: boolean } = {}): Promi
    PRÓXIMA CITA DEL CLIENTE
    --------------------------------------------------------------------- */
 export async function getNextAppointment(clientId: string): Promise<AppointmentWithDetails | null> {
+  if (isApiConfigured()) {
+    // La API devuelve la del usuario del token (clientId no se envía: no se puede pedir la de otro)
+    const res = await apiRequest<ApiAppointment>("/appointments/next");
+    if (!res.ok) {
+      console.error("Error al leer la próxima cita en la API:", res.message);
+      return null;
+    }
+    return res.status === 204 ? null : toAppointment(res.data);
+  }
+
   if (!isSupabaseConfigured()) {
     return getClientNextAppointment(clientId);
   }
@@ -154,6 +193,16 @@ export async function getNextAppointment(clientId: string): Promise<AppointmentW
    CITAS DEL DÍA (panel de administración y validación de disponibilidad)
    --------------------------------------------------------------------- */
 export async function getAppointmentsByDate(date: string): Promise<AppointmentWithDetails[]> {
+  if (isApiConfigured()) {
+    // Agenda del día (solo admin y barbero; la API ya excluye las canceladas)
+    const res = await apiRequest<ApiAppointment[]>(`/appointments?date=${encodeURIComponent(date)}`);
+    if (!res.ok) {
+      console.error("Error al leer la agenda en la API:", res.message);
+      return [];
+    }
+    return res.data.map(toAppointment);
+  }
+
   if (!isSupabaseConfigured()) {
     return getStoredAppointments(date).filter((a) => a.status !== "cancelada");
   }
@@ -203,6 +252,15 @@ export async function getAppointmentsByDate(date: string): Promise<AppointmentWi
  * para evitar el cruce de citas (overbooking) en el BookingWizard.
  */
 export async function getBookedSlotsByDate(date: string): Promise<string[]> {
+  if (isApiConfigured()) {
+    const res = await apiRequest<string[]>(`/appointments/booked-slots?date=${encodeURIComponent(date)}`);
+    if (!res.ok) {
+      console.error("Error al leer horas ocupadas en la API:", res.message);
+      return [];
+    }
+    return res.data;
+  }
+
   // Con Supabase: la función get_booked_slots devuelve las horas ocupadas por
   // cualquier cliente (RLS no deja ver citas ajenas). Tarea 3.5 / 3.6.
   if (isSupabaseConfigured()) {
@@ -229,6 +287,13 @@ export async function getBookedSlotsByDate(date: string): Promise<string[]> {
    HORARIO DE ATENCIÓN
    --------------------------------------------------------------------- */
 export async function getBusinessHours(): Promise<BusinessHours> {
+  if (isApiConfigured()) {
+    const res = await apiRequest<ApiBusinessHours>("/business-hours");
+    if (res.ok) return toBusinessHours(res.data);
+    console.error("Error al leer el horario en la API:", res.message);
+    return getStoredBusinessHours(); // horario por defecto para no romper la reserva
+  }
+
   if (!isSupabaseConfigured()) {
     return getStoredBusinessHours();
   }
@@ -260,6 +325,17 @@ export async function getProfilesPage(
   const from = (safePage - 1) * safePageSize;
   const to = from + safePageSize - 1;
 
+  if (isApiConfigured()) {
+    const res = await apiRequest<{ rows: ApiUser[]; total: number }>(
+      `/users?page=${safePage}&size=${safePageSize}`
+    );
+    if (!res.ok) {
+      console.error("Error al leer usuarios en la API:", res.message);
+      return { rows: [], total: 0 };
+    }
+    return { rows: res.data.rows.map(toProfile), total: res.data.total };
+  }
+
   if (!isSupabaseConfigured()) {
     const all = getAllUsers();
     return { rows: all.slice(from, to + 1), total: all.length };
@@ -281,6 +357,11 @@ export async function getProfilesPage(
 }
 
 export async function getClientCount(): Promise<number> {
+  if (isApiConfigured()) {
+    const res = await apiRequest<{ total: number }>("/users?role=CLIENTE&size=1");
+    return res.ok ? res.data.total : 0;
+  }
+
   if (!isSupabaseConfigured()) {
     return getAllUsers().filter((u) => u.role === "cliente").length;
   }

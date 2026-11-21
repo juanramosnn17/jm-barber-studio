@@ -37,6 +37,7 @@ export type ExpenseCategory =
   | "servicios_publicos"
   | "nomina_administrativa"
   | "insumos_generales"
+  | "compra_insumos_productos" // tarea 3.29: solo existe en el backend Spring Boot
   | "publicidad"
   | "mantenimiento"
   | "otros";

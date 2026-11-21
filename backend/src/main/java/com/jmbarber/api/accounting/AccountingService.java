@@ -92,7 +92,8 @@ public class AccountingService {
             rows.add(new TransactionRow(a.getId(), "INGRESO", a.getDate(), a.getTime().format(HH_MM),
                 a.getService().getName(), clientName,
                 a.getPaymentMethod() == null ? null : a.getPaymentMethod().name(),
-                net, 0, tip, a.getPaymentStatus().name()));
+                net, 0, tip, a.getPaymentStatus().name(), pesos(a.getDiscountAmount()),
+                pesos(a.getRefundAmount()), null, null, null, null));
         }
 
         long serviceIncome = income;
@@ -103,7 +104,8 @@ public class AccountingService {
                 productSales += amount; // suma a Ingresos y a Tu ganancia; no aparta reserva (tarea 3.30)
             }
             rows.add(new TransactionRow(s.getId(), "VENTA", s.getDate(), s.getTime().format(HH_MM),
-                s.getConcept(), null, s.getPaymentMethod().name(), amount, 0, 0, s.getStatus().name()));
+                s.getConcept(), null, s.getPaymentMethod().name(), amount, 0, 0, s.getStatus().name(),
+                0, 0, null, null, s.getVoidReason(), s.getVoidedAt()));
         }
         income += productSales;
 
@@ -114,7 +116,8 @@ public class AccountingService {
                 expenseTotal += amount;
             }
             rows.add(new TransactionRow(e.getId(), "GASTO", e.getDate(), e.getTime().format(HH_MM),
-                e.getConcept(), null, e.getPaymentMethod().name(), 0, amount, 0, e.getStatus().name()));
+                e.getConcept(), null, e.getPaymentMethod().name(), 0, amount, 0, e.getStatus().name(),
+                0, 0, e.getCategory().name(), e.getReference(), e.getVoidReason(), e.getVoidedAt()));
         }
 
         rows.sort(Comparator.comparing(TransactionRow::date).thenComparing(TransactionRow::time).reversed()

@@ -14,6 +14,10 @@ import ProfitSummaryCards from "@/components/accounting/ProfitSummaryCards";
 import AccountingTransactionsTable from "@/components/accounting/AccountingTransactionsTable";
 import { getAuthenticatedProfile } from "@/lib/accounting/profit-report.repository";
 import { getServerProfitReport } from "@/lib/accounting/profit-report.service";
+import ProductSaleDialog from "@/components/accounting/ProductSaleDialog";
+import CashClosingCard from "@/components/accounting/CashClosingCard";
+import { isApiConfigured } from "@/lib/api/config";
+import { buildReportQuery, getApiCashClosing, getApiProfitReport } from "@/lib/api/accounting";
 
 export const metadata: Metadata = {
   title: "Contabilidad y Reporte de Ganancias | JM Barber Studio",
@@ -61,7 +65,23 @@ export default async function AdminProfitReportPage({
     sortOrder: firstParam(resolvedParams.sortOrder),
   };
 
-  const reportResponse = await getServerProfitReport(rawFilters, currentUser);
+  // Con la API Spring Boot el reporte ya viene calculado; si no, lo calcula lib/accounting (tarea 4.9)
+  const apiMode = isApiConfigured();
+  const reportResponse = apiMode
+    ? await getApiProfitReport(
+        buildReportQuery({
+          quickPeriod: firstParam(resolvedParams.quickPeriod),
+          startDate: firstParam(resolvedParams.startDate),
+          endDate: firstParam(resolvedParams.endDate),
+          page: firstParam(resolvedParams.page),
+          pageSize: firstParam(resolvedParams.pageSize),
+        })
+      )
+    : await getServerProfitReport(rawFilters, currentUser);
+
+  // Cierre de caja del día (tarea 3.31, solo API). ?cierre=YYYY-MM-DD; por defecto, hoy.
+  const closingDate = firstParam(resolvedParams.cierre);
+  const cashClosing = apiMode ? await getApiCashClosing(closingDate) : null;
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-surface selection:bg-secondary-fixed selection:text-on-secondary-fixed">
@@ -113,6 +133,14 @@ export default async function AdminProfitReportPage({
                     appliedFilters={reportResponse.data.appliedFilters}
                     period={reportResponse.data.period}
                     filterOptions={reportResponse.data.filterOptions}
+                    extraActions={
+                      apiMode ? (
+                        <ProductSaleDialog
+                          defaultDate={reportResponse.data.period.endDate}
+                          paymentMethods={reportResponse.data.filterOptions.paymentMethods}
+                        />
+                      ) : null
+                    }
                   />
 
                   {/* 2. Tarjetas principales (Ingresos, Tu ganancia, Reserva, Gastos, Saldo) */}
@@ -129,7 +157,27 @@ export default async function AdminProfitReportPage({
                     transactions={reportResponse.data.transactions}
                     summary={reportResponse.data.summary}
                     currency={reportResponse.data.period.currency}
+                    expenseCategories={reportResponse.data.filterOptions.expenseCategories}
+                    apiMode={apiMode}
                   />
+
+                  {/* 4. Cierre de caja del día por método de pago (tarea 3.31, solo API) */}
+                  {cashClosing && (
+                    <CashClosingCard
+                      closing={cashClosing}
+                      keepParams={{
+                        quickPeriod: reportResponse.data.appliedFilters.quickPeriod ?? undefined,
+                        startDate:
+                          reportResponse.data.appliedFilters.quickPeriod === "custom"
+                            ? reportResponse.data.appliedFilters.startDate
+                            : undefined,
+                        endDate:
+                          reportResponse.data.appliedFilters.quickPeriod === "custom"
+                            ? reportResponse.data.appliedFilters.endDate
+                            : undefined,
+                      }}
+                    />
+                  )}
                 </>
               )}
             </div>

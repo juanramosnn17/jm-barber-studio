@@ -199,6 +199,7 @@ export interface DataCompletenessStatus {
 export type AccountingMovementType =
   | "ingreso_servicio"
   | "reembolso_servicio"
+  | "venta_producto" // tarea 3.30 (solo API)
   | "gasto_operativo"
   | "no_contabilizado";
 
@@ -227,7 +228,7 @@ export interface AccountingTransactionRow {
   statusLabel: string;
   isCountedInTotals: boolean;
   /** Datos para los ajustes contables del comprobante (spec F5, tareas 3.23–3.26). */
-  source: "appointment" | "expense";
+  source: "appointment" | "expense" | "product_sale"; // product_sale: tarea 3.30 (solo API)
   appointmentStatus?: string;
   expenseCategory?: string;
   expenseAmount?: string;

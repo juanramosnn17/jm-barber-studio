@@ -14,17 +14,24 @@ import type {
   PaginatedTransactions,
   ProfitSummary,
 } from "@/lib/accounting/profit-report.types";
+import type { ExpenseCategory } from "@/lib/types";
 
 interface AccountingTransactionsTableProps {
   transactions: PaginatedTransactions;
   summary: ProfitSummary;
   currency: string;
+  /** Categorías válidas para editar un gasto (en modo API incluye "Compra de insumos / productos"). */
+  expenseCategories: { id: ExpenseCategory; label: string }[];
+  /** true con el backend Spring Boot: habilita propinas y ventas de productos (tareas 3.29 y 3.30). */
+  apiMode: boolean;
 }
 
 export default function AccountingTransactionsTable({
   transactions,
   summary,
   currency,
+  expenseCategories,
+  apiMode,
 }: AccountingTransactionsTableProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -104,10 +111,13 @@ export default function AccountingTransactionsTable({
               transactions.rows.map((row) => {
                 const [, mm, dd] = row.date.split("-");
                 const isExpense = row.source === "expense";
+                const isSale = row.source === "product_sale";
                 const status = isExpense
                   ? row.status === "anulado"
                     ? "Anulado"
                     : "Registrado"
+                  : isSale
+                  ? row.statusLabel
                   : row.isCountedInTotals
                   ? "Cobrada"
                   : "Sin cobro";
@@ -134,7 +144,7 @@ export default function AccountingTransactionsTable({
                         {row.concept}
                       </button>
                       <span className="block text-xs text-on-surface-variant">
-                        {isExpense ? "Gasto" : row.clientAnonymized ?? "Cliente"}
+                        {isExpense ? "Gasto" : isSale ? "Venta de producto" : row.clientAnonymized ?? "Cliente"}
                       </span>
                     </td>
                     <td className="py-3.5 px-3 text-on-surface-variant whitespace-nowrap">
@@ -335,6 +345,8 @@ export default function AccountingTransactionsTable({
               key={selectedRow.id}
               row={selectedRow}
               onDone={closeDetailModal}
+              expenseCategories={expenseCategories}
+              apiMode={apiMode}
             />
 
             <div className="flex justify-end pt-2">

@@ -93,6 +93,7 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   servicios_publicos: "Servicios públicos e internet",
   nomina_administrativa: "Nómina administrativa",
   insumos_generales: "Insumos generales y aseo",
+  compra_insumos_productos: "Compra de insumos / productos",
   publicidad: "Publicidad y marketing",
   mantenimiento: "Mantenimiento y equipos",
   otros: "Otros gastos operativos",

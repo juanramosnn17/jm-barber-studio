@@ -55,9 +55,9 @@ El estudiante eligió Spring Boot + MySQL como backend de la U4 (ver `docs/decis
 | # | Estado | Cómo se cerró / dónde sigue |
 |---|---|---|
 | 2 | **Cerrado en Spring Boot (4.12)** | `AppointmentService.changeStatus`: si la cita está `COMPLETADA`, solo `ADMIN`; el `BARBERO` recibe 403. Prueba `CitasTest.elBarberoNoPuedeCambiarUnaCitaCompletadaPeroElAdminSi` y prueba en vivo. |
-| 3 | **Pendiente → tarea 4.13** | `queries.ts` a `server-only` y lecturas públicas en un archivo `"use server"` aparte. |
+| 3 | **Cerrado (4.13)** | `lib/data/queries.ts` es `server-only`. El navegador solo puede invocar `lib/data/public-actions.ts` (`getBookedRangesByDate`, que valida la fecha y no devuelve datos personales). `getNextAppointment()` ya no recibe un id. |
 | 4 | **Cerrado en Spring Boot (4.12)** | Migración `V3` (`end_time`); el servidor valida que `[time, end_time)` quepa en el horario y no se cruce con otra cita, con un cerrojo `SELECT … FOR UPDATE` porque MySQL no tiene `EXCLUDE`. El `BookingWizard` solo ofrece horas donde el servicio cabe. |
-| 7 | **Pendiente → tarea 4.13** | Validador común de `return_url`. |
+| 7 | **Cerrado (4.13)** | `safeReturnPath()` en `lib/safe-redirect.ts` (rechaza `//`, `\`, caracteres de control y otro origen). Lo usan `loginAction` y `proxy.ts`. Se probó en el navegador con `?return_url=/\evil.com`. |
 | 8 | **Cerrado (4.12)** | `GlobalExceptionHandler` responde 409/405/404/500 en español sin detalles internos; el detalle va al log. |
 | 11 | **Parcial (4.9)** | `PUT /services/{id}` implementado; sigue pendiente restringir `image_url` a rutas locales. |
 | 14 | **Parcial (4.12)** | `ON DELETE SET NULL` aplicado en `V3`; siguen para la U6 la validación de `iss`, las cabeceras HTTP y el *rate limiting*. |

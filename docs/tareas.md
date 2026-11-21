@@ -73,7 +73,7 @@
 - [x] 4.9 Conectar Next.js: cliente HTTP en `lib/api/`, las Server Actions y consultas llaman a la API, token JWT en cookie `httpOnly`, y `proxy.ts` valida la sesión con `GET /auth/me`. El modo demo (store en memoria) se mantiene cuando `API_URL` no está definida.
 - [ ] 4.10 Verificar en el navegador todos los criterios de F1–F5 contra el backend Spring Boot y registrar el resultado en `docs/verificacion-springboot.md`.
 - [ ] 4.11 Retirar Supabase del frontend (dependencias, variables y archivos `lib/supabase/*`) cuando 4.10 esté completa. El despliegue del backend en AWS queda para la Unidad 6.
-- [ ] 4.13 Seguridad del frontend (auditoría, hallazgos 3 y 7):
+- [x] 4.13 Seguridad del frontend (auditoría, hallazgos 3 y 7). *(Hecha y verificada el 2026-11-21: solo `actions.ts` y `public-actions.ts` exponen acciones; iniciar sesión desde `?return_url=/\evil.com` termina en `/cliente`; un destino legítimo con `?serviceId=…#booking-flow` se conserva; la reserva sigue cargando los horarios.)*
   - pasar `lib/data/queries.ts` a `server-only` y dejar en un archivo `"use server"` aparte solo lo que llama el navegador (`getBookedRangesByDate`), para que las lecturas de admin no se puedan invocar como acciones;
   - `getNextAppointment` sin parámetro `clientId`;
   - un validador común de `return_url` que también rechace `\` y verifique el mismo origen.

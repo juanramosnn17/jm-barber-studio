@@ -5,7 +5,7 @@ import Image from "next/image";
 import type { BusinessHours, Service } from "@/lib/types";
 import { formatFullDate, formatPrice, minutesToTime, timeToMinutes, toISODate } from "@/lib/format";
 import { generateDailySlots, isOpenOn, type BookedRange } from "@/lib/schedule";
-import { getBookedRangesByDate } from "@/lib/data/queries";
+import { getBookedRangesByDate } from "@/lib/data/public-actions";
 import { createAppointmentAction } from "@/lib/actions";
 
 interface BookingWizardProps {

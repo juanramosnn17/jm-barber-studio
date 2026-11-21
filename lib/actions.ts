@@ -33,6 +33,7 @@ import { isApiConfigured } from "@/lib/api/config";
 import { apiRequest, clearApiToken, setApiToken } from "@/lib/api/client";
 import { fromBusinessHours, upper, type ApiAppointment, type ApiUser } from "@/lib/api/mappers";
 import { isPastSlot } from "@/lib/schedule";
+import { safeReturnPath } from "@/lib/safe-redirect";
 import {
   addStoredAppointment,
   addStoredExpense,
@@ -106,10 +107,8 @@ export async function loginAction(
 ): Promise<ActionResult> {
   const emailOrPhone = formData.get("identifier") as string;
   const password = formData.get("password") as string;
-  const returnUrl = formData.get("return_url") as string | null;
-  // Solo destinos internos: empieza con "/" y no con "//" (evita redirigir a otro sitio)
-  const safeReturnUrl =
-    returnUrl && returnUrl.startsWith("/") && !returnUrl.startsWith("//") ? returnUrl : null;
+  // Solo destinos internos (sin "//", "\" ni otro origen): evita un open redirect (tarea 4.13)
+  const safeReturnUrl = safeReturnPath(formData.get("return_url"));
 
   if (!emailOrPhone || !password) {
     return { ok: false, message: "Por favor ingresa correo o teléfono y tu contraseña." };

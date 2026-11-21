@@ -13,6 +13,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { findUserById } from "@/lib/data/store";
 import { API_TOKEN_COOKIE, API_URL, isApiConfigured } from "@/lib/api/config";
+import { safeReturnPath } from "@/lib/safe-redirect";
 import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "./env";
 
 // Rutas que requieren haber iniciado sesión.
@@ -150,17 +151,15 @@ export async function updateSession(request: NextRequest) {
 
   // Con sesión intentando ver /login o /registro → a su panel o return_url
   if (isLoggedIn && isAuthPage) {
-    const returnUrl =
-      request.nextUrl.searchParams.get("return_url") ||
-      request.nextUrl.searchParams.get("next");
-    // Destino interno seguro: debe empezar con "/" y no con "//" (evita redirigir a otro sitio).
-    // Se interpreta como URL completa para conservar ?serviceId y #booking-flow; si se
-    // asignara a pathname, el "#" se codificaría como %23 y daría 404.
-    if (returnUrl && returnUrl.startsWith("/") && !returnUrl.startsWith("//")) {
-      const target = new URL(returnUrl, request.nextUrl.origin);
-      if (target.origin === request.nextUrl.origin) {
-        return redirectWithCookies(target, response);
-      }
+    // Destino interno seguro con la misma regla que loginAction (tarea 4.13): sin "//",
+    // sin "\" y del mismo origen. Se arma como URL completa para conservar ?serviceId y
+    // #booking-flow; si se asignara a pathname, el "#" se codificaría como %23 y daría 404.
+    const safePath = safeReturnPath(
+      request.nextUrl.searchParams.get("return_url") || request.nextUrl.searchParams.get("next"),
+      request.nextUrl.origin
+    );
+    if (safePath) {
+      return redirectWithCookies(new URL(safePath, request.nextUrl.origin), response);
     }
     const url = request.nextUrl.clone();
     if (userRole === "admin" || userRole === "barbero") {

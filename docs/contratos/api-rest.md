@@ -221,6 +221,11 @@ Detalles (tarea 4.8, mismas reglas que el motor actual `lib/accounting/`):
   - las reglas de rutas por rol no cambian.
 - **Contabilidad:** la página pide `GET /accounting/report` y lo adapta al formato de sus componentes, sin recalcular nada en el frontend. El CSV de `/api/accounting/profit-report?format=csv` se reenvía desde `GET /accounting/report.csv`.
 - **Funciones que solo existen en Spring Boot** (decisión del 2026-11-20): la propina al ajustar un pago (3.29), la categoría "Compra de insumos / productos" (3.29), las ventas de productos (3.30) y el cierre de caja (3.31). Solo se muestran en modo API.
+- **Seguridad del frontend (tarea 4.13, auditoría hallazgos 3 y 7):**
+  - `lib/data/queries.ts` es `server-only`: sus lecturas solo se llaman desde páginas y acciones del servidor, nunca como acción desde el navegador;
+  - lo único que el navegador puede invocar es `lib/data/public-actions.ts` (`"use server"`): `getBookedRangesByDate(date)`, que valida `date` como `YYYY-MM-DD` real y devuelve rangos sin datos personales;
+  - `getNextAppointment()` no recibe un id: siempre es la del usuario de la sesión;
+  - `return_url` / `next` pasan por `safeReturnPath()` (`lib/safe-redirect.ts`). Solo se acepta una ruta interna: empieza con `/`, no con `//`, sin `\` ni caracteres de control, y del mismo origen al interpretarla. Si no cumple, se ignora y se va al panel según el rol. Lo usan `loginAction` y `proxy.ts`.
 - **Ajustes del backend para esta tarea:**
   - `GET /users` acepta `role=CLIENTE|BARBERO|ADMIN` (opcional) para filtrar y contar;
   - las filas de `transactions.rows` agregan `discount`, `refund`, `category`, `reference`, `voidReason` y `voidedAt`, que el detalle del movimiento necesita para editar o ajustar. Estos campos van en `null` (o 0 en los montos) cuando no aplican.

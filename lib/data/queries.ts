@@ -6,10 +6,15 @@
    Si no, y Supabase está configurado, lee SOLO de la base de datos remota
    (sin mezclar datos de ejemplo ni del store; si falla, devuelve vacío);
    si no, lee del store en memoria reactivo (modo demo). Tarea 3.16.
+
+   SEGURIDAD (tarea 4.13, auditoría hallazgo 3): este archivo es
+   "server-only", NO "use server". Con "use server" cada función exportada
+   se volvía una acción que cualquiera podía invocar desde el navegador
+   (por ejemplo getProfilesPage sin sesión en modo demo). Lo único que el
+   navegador puede llamar está en ./public-actions.ts.
    ===================================================================== */
 
-"use server";
-
+import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -156,9 +161,10 @@ export async function getServices(options: { onlyActive?: boolean } = {}): Promi
 /* ---------------------------------------------------------------------
    PRÓXIMA CITA DEL CLIENTE
    --------------------------------------------------------------------- */
-export async function getNextAppointment(clientId: string): Promise<AppointmentWithDetails | null> {
+/** Próxima cita del usuario de la sesión. No recibe un id: nadie puede pedir la de otro (tarea 4.13). */
+export async function getNextAppointment(): Promise<AppointmentWithDetails | null> {
   if (isApiConfigured()) {
-    // La API devuelve la del usuario del token (clientId no se envía: no se puede pedir la de otro)
+    // La API devuelve la del usuario del token
     const res = await apiRequest<ApiAppointment>("/appointments/next");
     if (!res.ok) {
       console.error("Error al leer la próxima cita en la API:", res.message);
@@ -166,6 +172,10 @@ export async function getNextAppointment(clientId: string): Promise<AppointmentW
     }
     return res.status === 204 ? null : toAppointment(res.data);
   }
+
+  const profile = await getCurrentProfile();
+  if (!profile) return null;
+  const clientId = profile.id;
 
   if (!isSupabaseConfigured()) {
     return getClientNextAppointment(clientId);

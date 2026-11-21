@@ -30,7 +30,7 @@ export default async function ClientAreaPage({ searchParams }: ClientPageProps) 
     getBusinessHours(),
   ]);
 
-  const nextAppointment = profile ? await getNextAppointment(profile.id) : null;
+  const nextAppointment = profile ? await getNextAppointment() : null;
   const firstName = profile ? profile.first_name : "Cliente";
 
   return (

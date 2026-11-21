@@ -9,12 +9,20 @@ interface ScheduleConfigProps {
   initialHours: BusinessHours;
 }
 
+const SLOT_OPTIONS = [
+  { minutes: 15, label: "Cada 15 min" },
+  { minutes: 30, label: "Cada 30 min" },
+  { minutes: 45, label: "Cada 45 min" },
+  { minutes: 60, label: "Cada 60 min" },
+];
+
 export default function ScheduleConfig({ initialHours }: ScheduleConfigProps) {
   const [openDays, setOpenDays] = useState<number[]>(initialHours.open_days);
   const [openTime, setOpenTime] = useState(initialHours.open_time);
   const [closeTime, setCloseTime] = useState(initialHours.close_time);
-  const [breakStart, setBreakStart] = useState(initialHours.break_start || "14:00");
-  const [breakEnd, setBreakEnd] = useState(initialHours.break_end || "15:00");
+  const [breakStart, setBreakStart] = useState(initialHours.break_start || "");
+  const [breakEnd, setBreakEnd] = useState(initialHours.break_end || "");
+  const [slotMinutes, setSlotMinutes] = useState<number>(initialHours.slot_minutes || 30);
   const [saved, setSaved] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -42,8 +50,9 @@ export default function ScheduleConfig({ initialHours }: ScheduleConfigProps) {
         open_days: openDays,
         open_time: openTime,
         close_time: closeTime,
-        break_start: breakStart,
-        break_end: breakEnd,
+        break_start: breakStart.trim() ? breakStart : null,
+        break_end: breakEnd.trim() ? breakEnd : null,
+        slot_minutes: slotMinutes,
       });
 
       if (res.ok) {
@@ -141,6 +150,35 @@ export default function ScheduleConfig({ initialHours }: ScheduleConfigProps) {
               />
             </div>
           </div>
+        </div>
+
+        {/* Paso entre inicios de turno (slot_minutes, T-B4) */}
+        <div className="flex flex-col gap-1.5 pt-1">
+          <span className="font-label-sm uppercase tracking-wider text-on-surface-variant font-bold">
+            Intervalo de inicio de turnos
+          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {SLOT_OPTIONS.map((opt) => {
+              const isSelected = slotMinutes === opt.minutes;
+              return (
+                <button
+                  key={opt.minutes}
+                  type="button"
+                  onClick={() => setSlotMinutes(opt.minutes)}
+                  className={`h-9 px-3.5 rounded-xl font-label-md text-xs transition-all border ${
+                    isSelected
+                      ? "bg-primary text-on-primary border-primary shadow-sm font-bold"
+                      : "bg-surface-container-low text-on-surface border-surface-container-high hover:bg-surface-container"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="font-body-sm text-on-surface-variant text-xs">
+            Define cada cuántos minutos puede iniciar una cita; cada servicio bloquea su duración real.
+          </p>
         </div>
       </div>
 

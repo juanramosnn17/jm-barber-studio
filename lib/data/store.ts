@@ -203,6 +203,31 @@ export function addStoredService(newSrv: Omit<Service, "id" | "sort_order">): Se
   return service;
 }
 
+/** Edita un servicio existente en memoria (modo demo, T-B4). */
+export function updateStoredService(
+  serviceId: string,
+  changes: Partial<
+    Pick<
+      Service,
+      | "name"
+      | "short_name"
+      | "description"
+      | "includes"
+      | "price"
+      | "reserve_amount"
+      | "duration_label"
+      | "duration_minutes"
+      | "image_url"
+      | "icon"
+    >
+  >
+): Service | null {
+  const srv = store.services.find((s) => s.id === serviceId);
+  if (!srv) return null;
+  Object.assign(srv, changes);
+  return srv;
+}
+
 /* ---------------------------------------------------------------------
    HORARIOS DE ATENCIÓN
    --------------------------------------------------------------------- */

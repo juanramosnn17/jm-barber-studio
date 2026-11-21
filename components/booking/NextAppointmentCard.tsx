@@ -73,12 +73,9 @@ export default function NextAppointmentCard({ appointment }: NextAppointmentCard
           <h2 className="font-headline-md text-on-surface font-bold">
             {appointment.service_name}
           </h2>
-          {appointment.barber_name && (
-            <p className="font-body-sm text-on-surface-variant">
-              Barbero: <span className="font-semibold text-on-surface">{appointment.barber_name}</span>{" "}
-              {appointment.chair ? `(${appointment.chair})` : ""}
-            </p>
-          )}
+          <p className="font-body-sm text-on-surface-variant">
+            JM Barber Studio
+          </p>
         </div>
 
         <div className="md:col-span-7 flex items-center gap-space-md">

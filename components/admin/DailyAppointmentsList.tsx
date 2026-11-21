@@ -47,7 +47,7 @@ export default function DailyAppointmentsList({
         <div>
           <h2 className="font-title-lg text-on-surface">Citas del Día</h2>
           <p className="font-body-sm text-on-surface-variant">
-            Supervisión y control del flujo de sillones en tiempo real
+            Control de la agenda diaria en tiempo real
           </p>
         </div>
 
@@ -145,27 +145,17 @@ export default function DailyAppointmentsList({
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-space-xs">
                       <span className="font-title-md font-semibold text-on-surface">
-                        {app.client_name}
-                      </span>
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          isConfirmed ? "bg-secondary" : "bg-outline-variant"
-                        }`}
-                      ></span>
-                      <span
-                        className={`font-label-sm ${
-                          isConfirmed ? "text-secondary font-bold" : "text-on-surface-variant"
-                        }`}
-                      >
-                        {app.chair || "Sillón Principal"}
+                        {app.client_name || "Cliente eliminado"}
                       </span>
                     </div>
                     <div className="flex items-center gap-space-xs text-on-surface-variant font-body-sm mt-0.5">
                       <span>{app.service_name}</span>
-                      <span className="text-outline-variant">•</span>
-                      <span className="font-medium text-on-surface">
-                        Barbero: {app.barber_name || "Asignado"}
-                      </span>
+                      {app.duration_label && (
+                        <>
+                          <span className="text-outline-variant">•</span>
+                          <span>{app.duration_label}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

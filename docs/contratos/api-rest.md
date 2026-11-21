@@ -144,6 +144,34 @@ Categorías: `ARRIENDO`, `SERVICIOS_PUBLICOS`, `NOMINA_ADMINISTRATIVA`, `INSUMOS
 
 Fórmulas (spec F5): ingresos = Σ(precio − descuento − reembolso) de citas cobradas (+ ventas de productos, 3.30); reserva = Σ reserva fijada en cada cita; tu ganancia = ingresos − reserva; saldo = reserva − gastos registrados. Las propinas van aparte.
 
+Detalles (tarea 4.8, mismas reglas que el motor actual `lib/accounting/`):
+- **Periodo** (hora de Colombia):
+  - `today`; `this_week` (lunes a domingo); `this_month` (por defecto); `last_month`;
+  - `custom` exige `startDate` ≤ `endDate`, con un máximo de 366 días;
+  - un periodo inválido → 400.
+  - La respuesta incluye `period: { key, startDate, endDate }`.
+- **Cita cobrada:** está `COMPLETADA`, con `paymentStatus` `PAGADO` o `REEMBOLSADO`, y su `date` cae en el periodo. Las pendientes, canceladas o anuladas no son movimientos de dinero.
+- **Cálculo por cita:**
+  - neto = `grossAmount` − descuento − reembolso;
+  - la reserva es la fijada en la cita; si falta, la actual del servicio;
+  - la reserva nunca supera el neto, y una cita reembolsada por completo (neto ≤ 0) no aparta reserva ni cuenta como servicio realizado.
+- **Totales:**
+  - `servicesCount` = citas con neto > 0;
+  - `averageTicket` = ingresos ÷ `servicesCount`, redondeado, o `null` si no hubo servicios;
+  - `tips` = Σ propinas de las citas cobradas;
+  - `expenses` suma solo los gastos `REGISTRADO`.
+- **`transactions.rows`:**
+  - campos: `{ id, type: "INGRESO" | "GASTO", date, time, concept, clientName, paymentMethod, income, expense, tip, status }`;
+  - incluyen las citas cobradas (concepto = servicio, con el nombre del cliente) y todos los gastos del periodo, también los anulados (`status = ANULADO`, que no suman);
+  - orden: fecha y hora descendentes;
+  - `page` empieza en 1 y `size` va de 1 a 100 (por defecto 15).
+- **CSV:**
+  - UTF-8 con BOM (para que Excel muestre tildes) y separador `,`;
+  - primero el resumen y después **todas** las filas del periodo, sin paginar;
+  - una celda de texto que empieza con `=`, `+`, `-`, `@`, tabulador o retorno se antepone con `'`; las comillas se escapan (RFC 4180);
+  - el archivo se descarga como `reporte-contable_{startDate}_{endDate}.csv`.
+- **Pendientes como tareas aparte:** ventas de productos (3.30) y cierre de caja (3.31).
+
 ## Equivalencia con el contrato actual
 | Hoy (Next.js + Supabase) | Spring Boot |
 |---|---|

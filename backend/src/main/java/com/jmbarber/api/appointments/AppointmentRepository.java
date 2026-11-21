@@ -43,6 +43,15 @@ public interface AppointmentRepository extends JpaRepository<Appointment, String
     List<Appointment> findUpcoming(@Param("clientId") String clientId, @Param("today") LocalDate today,
                                    @Param("now") LocalTime now, Pageable page);
 
+    /** Citas cobradas del periodo para el reporte contable (spec F5). */
+    @Query("""
+        select a from Appointment a join fetch a.client join fetch a.service
+        where a.date between :start and :end
+          and a.status = com.jmbarber.api.appointments.AppointmentEnums.Status.COMPLETADA
+          and a.paymentStatus in (com.jmbarber.api.appointments.AppointmentEnums.PaymentStatus.PAGADO,
+                                  com.jmbarber.api.appointments.AppointmentEnums.PaymentStatus.REEMBOLSADO)""")
+    List<Appointment> findCollectedBetween(@Param("start") LocalDate start, @Param("end") LocalDate end);
+
     @Query("select a from Appointment a join fetch a.client join fetch a.service where a.id = :id")
     Optional<Appointment> findWithDetails(@Param("id") String id);
 }

@@ -69,7 +69,7 @@
 - [x] 4.5 Citas: horas ocupadas, reservar (rechaza el pasado y el turno ocupado con 409), próxima cita, agenda del día, cambio de estado con permisos por rol y fijación de la reserva al completar.
 - [x] 4.6 Usuarios (admin): listado paginado, editar datos y rol, eliminar; el admin no puede eliminarse ni quitarse el rol.
 - [x] 4.7 Gastos: registrar, editar, anular con motivo y eliminar; ajuste de pago de citas (método, descuento, reembolso, propina).
-- [ ] 4.8 Contabilidad: reporte con el modelo de reserva (Ingresos · Tu ganancia · Reserva · Gastos · Saldo) y exportación CSV saneada.
+- [x] 4.8 Contabilidad: reporte con el modelo de reserva (Ingresos · Tu ganancia · Reserva · Gastos · Saldo) y exportación CSV saneada.
 - [ ] 4.9 Conectar Next.js: cliente HTTP en `lib/api/`, las Server Actions y consultas llaman a la API, token JWT en cookie `httpOnly`, y `proxy.ts` valida la sesión con `GET /auth/me`. El modo demo (store en memoria) se mantiene cuando `API_URL` no está definida.
 - [ ] 4.10 Verificar en el navegador todos los criterios de F1–F5 contra el backend Spring Boot y registrar el resultado en `docs/verificacion-springboot.md`.
 - [ ] 4.11 Retirar Supabase del frontend (dependencias, variables y archivos `lib/supabase/*`) cuando 4.10 esté completa. El despliegue del backend en AWS queda para la Unidad 6.

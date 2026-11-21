@@ -5,22 +5,21 @@
    ---------------------------------------------------------------------
    Permite al Administrador:
      1. Activar o desactivar servicios existentes de inmediato.
-     2. Crear nuevos servicios con:
-        - Nombre y nombre corto
-        - Precio e inversión
-        - Duración estimada (minutos y etiqueta)
-        - Descripción detallada
-        - Icono distintivo
-        - Imagen representativa (elegir entre galería o URL personalizada)
-   Al guardar, se actualiza el Store y Supabase, impactando en tiempo real
-   tanto la landing page (/) como el catálogo del cliente (/cliente).
+     2. Crear nuevos servicios y editar los existentes (nombre, precio,
+        duración en minutos, reserva fija, descripción, icono e imagen).
+   Los cambios en duración, precio o reserva solo aplican a citas nuevas;
+   las reservas y cobros pasados conservan sus valores congelados (T-B4).
    ===================================================================== */
 
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import type { Service } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
-import { createServiceAction, toggleServiceActiveAction } from "@/lib/actions";
+import {
+  createServiceAction,
+  toggleServiceActiveAction,
+  updateServiceAction,
+} from "@/lib/actions";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import ServiceReserveField from "@/components/admin/ServiceReserveField";
 
@@ -28,7 +27,6 @@ interface ServicesManagerProps {
   initialServices: Service[];
 }
 
-// Opciones de imágenes sugeridas precargadas en el proyecto
 const PRESET_IMAGES = [
   { label: "Corte Tradicional", url: "/images/servicios/corte-cabello.jpg" },
   { label: "Corte Pro", url: "/images/servicios/corte-pro.jpg" },
@@ -37,7 +35,6 @@ const PRESET_IMAGES = [
   { label: "Arreglo de Cejas", url: "/images/servicios/arreglo-cejas.jpg" },
 ];
 
-// Opciones de iconos Material Symbols disponibles
 const PRESET_ICONS = [
   { label: "Tijera", icon: "content_cut" },
   { label: "Cuidado Facial", icon: "spa" },
@@ -49,6 +46,7 @@ const PRESET_ICONS = [
 export default function ServicesManager({ initialServices }: ServicesManagerProps) {
   const [services, setServices] = useState<Service[]>(initialServices);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingService, setEditingService] = useState<Service | null>(null);
   const [selectedImage, setSelectedImage] = useState(PRESET_IMAGES[0].url);
   const [customImageUrl, setCustomImageUrl] = useState("");
   const [selectedIcon, setSelectedIcon] = useState(PRESET_ICONS[0].icon);
@@ -56,11 +54,35 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
   const [toggleError, setToggleError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const openCreateModal = () => {
+    setEditingService(null);
+    setSelectedImage(PRESET_IMAGES[0].url);
+    setCustomImageUrl("");
+    setSelectedIcon(PRESET_ICONS[0].icon);
+    setErrorMessage(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (srv: Service) => {
+    setEditingService(srv);
+    const isPreset = PRESET_IMAGES.some((img) => img.url === srv.image_url);
+    setSelectedImage(isPreset && srv.image_url ? srv.image_url : PRESET_IMAGES[0].url);
+    setCustomImageUrl(!isPreset && srv.image_url ? srv.image_url : "");
+    setSelectedIcon(srv.icon || PRESET_ICONS[0].icon);
+    setErrorMessage(null);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingService(null);
+    setErrorMessage(null);
+  };
+
   // Alternar visibilidad de un servicio
   const handleToggle = (id: string) => {
     const previous = services;
     setToggleError(null);
-    // Optimistic UI update
     setServices((prev) =>
       prev.map((s) => (s.id === id ? { ...s, is_active: !s.is_active } : s))
     );
@@ -68,15 +90,14 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
     startTransition(async () => {
       const res = await toggleServiceActiveAction(id);
       if (!res.ok) {
-        // Revertir: el cambio no se guardó
         setServices(previous);
         setToggleError(res.message || "No se pudo cambiar el estado del servicio.");
       }
     });
   };
 
-  // Crear un nuevo servicio
-  const handleSubmitNewService = (e: React.FormEvent<HTMLFormElement>) => {
+  // Crear o editar un servicio
+  const handleSubmitService = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
     const form = e.currentTarget;
@@ -86,34 +107,67 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
     formData.set("image_url", finalImageUrl);
     formData.set("icon", selectedIcon);
 
+    const name = ((formData.get("name") as string) ?? "").trim();
+    const shortName = ((formData.get("short_name") as string) ?? "").trim() || name;
+    const price = Math.round(Number(formData.get("price")) || 0);
+    const reserveAmount = Math.round(Number(formData.get("reserve_amount")) || 0);
+    const durationMinutes = Math.round(Number(formData.get("duration_minutes")) || 30);
+    const durationLabel =
+      ((formData.get("duration_label") as string) ?? "").trim() || `${durationMinutes} min`;
+    const desc = ((formData.get("description") as string) ?? "").trim();
+    const includes = ((formData.get("includes") as string) ?? "").trim() || null;
+
     startTransition(async () => {
-      const res = await createServiceAction(formData);
+      const res = editingService
+        ? await updateServiceAction(editingService.id, formData)
+        : await createServiceAction(formData);
+
       if (res.ok) {
-        setIsModalOpen(false);
+        if (editingService) {
+          setServices((prev) =>
+            prev.map((s) =>
+              s.id === editingService.id
+                ? {
+                    ...s,
+                    name,
+                    short_name: shortName,
+                    description: desc || s.description,
+                    includes,
+                    price,
+                    reserve_amount: reserveAmount,
+                    duration_minutes: durationMinutes,
+                    duration_label: durationLabel,
+                    image_url: finalImageUrl,
+                    icon: selectedIcon,
+                  }
+                : s
+            )
+          );
+        } else {
+          const newLocalSrv: Service = {
+            id: `srv-${Date.now()}`,
+            name,
+            short_name: shortName,
+            description: desc || "Servicio profesional de cuidado masculino.",
+            includes,
+            price,
+            reserve_amount: reserveAmount,
+            duration_minutes: durationMinutes,
+            duration_label: durationLabel,
+            image_url: finalImageUrl,
+            icon: selectedIcon,
+            is_active: true,
+            sort_order: services.length + 1,
+          };
+          setServices((prev) => [...prev, newLocalSrv]);
+        }
+        closeModal();
         form.reset();
-        setCustomImageUrl("");
-        // Agregar optimistamente al estado local para reflejo inmediato
-        const name = formData.get("name") as string;
-        const price = parseFloat(formData.get("price") as string) || 0;
-        const duration = (formData.get("duration_label") as string) || "30 min";
-        const desc = (formData.get("description") as string) || "";
-        const newLocalSrv: Service = {
-          id: `srv-${Date.now()}`,
-          name,
-          short_name: name,
-          description: desc,
-          includes: null,
-          price,
-          duration_minutes: 30,
-          duration_label: duration,
-          image_url: finalImageUrl,
-          icon: selectedIcon,
-          is_active: true,
-          sort_order: services.length + 1,
-        };
-        setServices((prev) => [...prev, newLocalSrv]);
       } else {
-        setErrorMessage(res.message || "Error al crear el servicio.");
+        setErrorMessage(
+          res.message ||
+            (editingService ? "Error al actualizar el servicio." : "Error al crear el servicio.")
+        );
       }
     });
   };
@@ -132,15 +186,13 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
             </span>
           </div>
           <p className="font-body-sm text-on-surface-variant mt-0.5">
-            Activa, desactiva o agrega servicios para el catálogo de clientes
+            Activa, edita duración/precio o agrega servicios para el catálogo de clientes
           </p>
         </div>
 
-        {/* Botón para abrir modal de nuevo servicio */}
-        {/* EDITAR AQUÍ: Botón que dispara el formulario de nuevo servicio */}
         <button
           type="button"
-          onClick={() => setIsModalOpen(true)}
+          onClick={openCreateModal}
           className="h-9 px-3.5 rounded-full bg-primary text-on-primary hover:bg-neutral-800 font-label-md transition-all flex items-center gap-1.5 shrink-0 shadow-sm"
         >
           <span className="material-symbols-outlined text-[16px] text-secondary-fixed">add</span>
@@ -149,7 +201,7 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
       </div>
 
       {/* Lista de Servicios Disponibles */}
-      <div className="flex flex-col gap-space-sm max-h-[380px] overflow-y-auto pr-1">
+      <div className="flex flex-col gap-space-sm max-h-[420px] overflow-y-auto pr-1">
         {services.map((srv) => (
           <div
             key={srv.id}
@@ -175,9 +227,14 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
                   {srv.name}
                 </span>
                 <span className="font-body-sm text-on-surface-variant">
-                  {formatPrice(srv.price)} • {srv.duration_label}
+                  {formatPrice(srv.price)} • {srv.duration_minutes} min
+                  {srv.duration_label && srv.duration_label !== `${srv.duration_minutes} min`
+                    ? ` (${srv.duration_label})`
+                    : ""}
                 </span>
                 <ServiceReserveField
+                  // La key con el monto reinicia el campo cuando "Editar" cambia la reserva
+                  key={`${srv.id}-${srv.reserve_amount ?? 0}`}
                   serviceId={srv.id}
                   serviceName={srv.name}
                   initialAmount={Number(srv.reserve_amount ?? 0)}
@@ -185,9 +242,20 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
               </div>
             </div>
 
-            {/* Conmutador de Visibilidad Activo/Inactivo */}
-            <div className="flex items-center gap-2">
-              <span className="font-label-xs text-on-surface-variant hidden sm:inline">
+            {/* Acciones: Editar + Conmutador Activo/Inactivo */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => openEditModal(srv)}
+                disabled={isPending}
+                aria-label={`Editar el servicio ${srv.name}`}
+                className="h-8 px-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-xs flex items-center gap-1 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[15px]">edit</span>
+                <span className="hidden sm:inline">Editar</span>
+              </button>
+
+              <span className="font-label-xs text-on-surface-variant hidden md:inline">
                 {srv.is_active ? "Visible" : "Oculto"}
               </span>
               <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -206,7 +274,7 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
         ))}
       </div>
 
-      {/* MODAL: FORMULARIO PARA AGREGAR NUEVO SERVICIO */}
+      {/* MODAL: CREAR O EDITAR SERVICIO */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-surface-container-lowest rounded-3xl w-full max-w-lg p-6 sm:p-8 shadow-2xl border border-surface-container-high flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
@@ -215,11 +283,14 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
                 <span className="font-label-xs uppercase tracking-widest text-secondary font-bold">
                   Catálogo Maestro
                 </span>
-                <h3 className="font-headline-sm text-on-surface font-bold">Agregar Nuevo Servicio</h3>
+                <h3 className="font-headline-sm text-on-surface font-bold">
+                  {editingService ? "Editar Servicio" : "Agregar Nuevo Servicio"}
+                </h3>
               </div>
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
+                onClick={closeModal}
+                aria-label="Cerrar ventana"
                 className="w-8 h-8 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant"
               >
                 <span className="material-symbols-outlined text-[20px]">close</span>
@@ -233,7 +304,11 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
               </div>
             )}
 
-            <form onSubmit={handleSubmitNewService} className="flex flex-col gap-4">
+            <form
+              key={editingService?.id ?? "new-service"}
+              onSubmit={handleSubmitService}
+              className="flex flex-col gap-4"
+            >
               {/* Nombre y Nombre Corto */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
@@ -244,6 +319,7 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
                     id="srv-name"
                     name="name"
                     required
+                    defaultValue={editingService?.name ?? ""}
                     placeholder="Ej. Corte & Toalla Caliente"
                     className="h-10 px-3 rounded-xl bg-surface-container-low text-on-surface border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-secondary/40 text-sm"
                   />
@@ -255,13 +331,14 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
                   <input
                     id="srv-short"
                     name="short_name"
+                    defaultValue={editingService?.short_name ?? ""}
                     placeholder="Ej. Corte Ritual"
                     className="h-10 px-3 rounded-xl bg-surface-container-low text-on-surface border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-secondary/40 text-sm"
                   />
                 </div>
               </div>
 
-              {/* Precio y Duración */}
+              {/* Precio y Reserva fija */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="font-label-sm text-on-surface font-medium" htmlFor="srv-price">
@@ -274,25 +351,65 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
                     required
                     min="1000"
                     step="500"
-                    placeholder="45000"
+                    defaultValue={editingService?.price ?? ""}
+                    placeholder="25000"
                     className="h-10 px-3 rounded-xl bg-surface-container-low text-on-surface border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-secondary/40 text-sm"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="font-label-sm text-on-surface font-medium" htmlFor="srv-duration">
-                    Etiqueta de Duración
+                  <label className="font-label-sm text-on-surface font-medium" htmlFor="srv-reserve">
+                    Reserva del negocio (COP)
                   </label>
                   <input
-                    id="srv-duration"
-                    name="duration_label"
-                    defaultValue="45 min"
-                    placeholder="45 min"
+                    id="srv-reserve"
+                    name="reserve_amount"
+                    type="number"
+                    min="0"
+                    step="500"
+                    defaultValue={editingService?.reserve_amount ?? 0}
+                    placeholder="5000"
                     className="h-10 px-3 rounded-xl bg-surface-container-low text-on-surface border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-secondary/40 text-sm"
                   />
                 </div>
               </div>
 
-              {/* Descripción */}
+              {/* Duración real en minutos (bloquea agenda) + etiqueta */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label
+                    className="font-label-sm text-on-surface font-medium"
+                    htmlFor="srv-duration-minutes"
+                  >
+                    Duración real (minutos) *
+                  </label>
+                  <input
+                    id="srv-duration-minutes"
+                    name="duration_minutes"
+                    type="number"
+                    required
+                    min="10"
+                    max="240"
+                    step="5"
+                    defaultValue={editingService?.duration_minutes ?? 30}
+                    placeholder="60"
+                    className="h-10 px-3 rounded-xl bg-surface-container-low text-on-surface border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-secondary/40 text-sm"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="font-label-sm text-on-surface font-medium" htmlFor="srv-duration">
+                    Etiqueta visible
+                  </label>
+                  <input
+                    id="srv-duration"
+                    name="duration_label"
+                    defaultValue={editingService?.duration_label ?? ""}
+                    placeholder="Ej. 60 min"
+                    className="h-10 px-3 rounded-xl bg-surface-container-low text-on-surface border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-secondary/40 text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Descripción y qué incluye */}
               <div className="flex flex-col gap-1">
                 <label className="font-label-sm text-on-surface font-medium" htmlFor="srv-desc">
                   Descripción del Servicio
@@ -301,14 +418,30 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
                   id="srv-desc"
                   name="description"
                   rows={2}
+                  defaultValue={editingService?.description ?? ""}
                   placeholder="Detalla qué incluye la experiencia para el cliente..."
                   className="p-3 rounded-xl bg-surface-container-low text-on-surface border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-secondary/40 text-sm resize-none"
                 />
               </div>
 
+              <div className="flex flex-col gap-1">
+                <label className="font-label-sm text-on-surface font-medium" htmlFor="srv-includes">
+                  Qué incluye (opcional)
+                </label>
+                <input
+                  id="srv-includes"
+                  name="includes"
+                  defaultValue={editingService?.includes ?? ""}
+                  placeholder="Ej. Lavado + Peinado + Asesoría"
+                  className="h-10 px-3 rounded-xl bg-surface-container-low text-on-surface border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-secondary/40 text-sm"
+                />
+              </div>
+
               {/* Selección de Icono */}
               <div className="flex flex-col gap-1.5">
-                <label className="font-label-sm text-on-surface font-medium">Icono representativo</label>
+                <label className="font-label-sm text-on-surface font-medium">
+                  Icono representativo
+                </label>
                 <div className="flex items-center gap-2 flex-wrap">
                   {PRESET_ICONS.map((item) => (
                     <button
@@ -330,7 +463,9 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
 
               {/* Selección de Imagen */}
               <div className="flex flex-col gap-2">
-                <label className="font-label-sm text-on-surface font-medium">Imagen del Servicio</label>
+                <label className="font-label-sm text-on-surface font-medium">
+                  Imagen del Servicio
+                </label>
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                   {PRESET_IMAGES.map((img) => {
                     const isSelected = selectedImage === img.url && !customImageUrl;
@@ -343,7 +478,9 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
                           setCustomImageUrl("");
                         }}
                         className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all ${
-                          isSelected ? "border-secondary ring-2 ring-secondary/40" : "border-transparent opacity-70 hover:opacity-100"
+                          isSelected
+                            ? "border-secondary ring-2 ring-secondary/40"
+                            : "border-transparent opacity-70 hover:opacity-100"
                         }`}
                       >
                         <Image src={img.url} alt={img.label} fill className="object-cover" />
@@ -357,7 +494,7 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-surface-container-high/60 mt-2">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={closeModal}
                   className="px-4 py-2.5 rounded-full text-on-surface-variant hover:bg-surface-container font-label-md text-sm transition-colors"
                 >
                   Cancelar
@@ -370,7 +507,13 @@ export default function ServicesManager({ initialServices }: ServicesManagerProp
                   <span className="material-symbols-outlined text-[18px] text-secondary-fixed">
                     {isPending ? "sync" : "save"}
                   </span>
-                  <span>{isPending ? "Guardando..." : "Guardar Servicio"}</span>
+                  <span>
+                    {isPending
+                      ? "Guardando..."
+                      : editingService
+                      ? "Guardar Cambios"
+                      : "Guardar Servicio"}
+                  </span>
                 </button>
               </div>
             </form>

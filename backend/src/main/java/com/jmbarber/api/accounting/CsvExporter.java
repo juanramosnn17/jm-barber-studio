@@ -30,6 +30,7 @@ public final class CsvExporter {
         csv.append("\r\n");
         line(csv, text("Concepto"), text("Valor (COP)"));
         line(csv, text("Ingresos"), number(s.income()));
+        line(csv, text("  de ellos, ventas de productos"), number(s.productSales()));
         line(csv, text("Tu ganancia"), number(s.yourProfit()));
         line(csv, text("Reserva del negocio"), number(s.businessReserve()));
         line(csv, text("Gastos"), number(s.expenses()));

@@ -20,6 +20,8 @@ import com.jmbarber.api.appointments.Appointment;
 import com.jmbarber.api.appointments.AppointmentRepository;
 import com.jmbarber.api.expenses.Expense;
 import com.jmbarber.api.expenses.ExpenseRepository;
+import com.jmbarber.api.sales.ProductSale;
+import com.jmbarber.api.sales.ProductSaleRepository;
 
 /**
  * Motor contable con el modelo de reserva (spec F5, tarea 3.27). Traduce las reglas de
@@ -33,11 +35,14 @@ public class AccountingService {
 
     private final AppointmentRepository appointments;
     private final ExpenseRepository expenses;
+    private final ProductSaleRepository sales;
     private final Clock clock;
 
-    public AccountingService(AppointmentRepository appointments, ExpenseRepository expenses, Clock clock) {
+    public AccountingService(AppointmentRepository appointments, ExpenseRepository expenses,
+                             ProductSaleRepository sales, Clock clock) {
         this.appointments = appointments;
         this.expenses = expenses;
+        this.sales = sales;
         this.clock = clock;
     }
 
@@ -92,6 +97,18 @@ public class AccountingService {
                 net, 0, tip, a.getPaymentStatus().name()));
         }
 
+        long serviceIncome = income;
+        long productSales = 0;
+        for (ProductSale s : sales.findByDateBetween(period.startDate(), period.endDate())) {
+            long amount = pesos(s.getAmount());
+            if (s.getStatus() == ProductSale.Status.REGISTRADO) {
+                productSales += amount; // suma a Ingresos y a Tu ganancia; no aparta reserva (tarea 3.30)
+            }
+            rows.add(new TransactionRow(s.getId(), "VENTA", s.getDate(), s.getTime().format(HH_MM),
+                s.getConcept(), null, s.getPaymentMethod().name(), amount, 0, 0, s.getStatus().name()));
+        }
+        income += productSales;
+
         long expenseTotal = 0;
         for (Expense e : expenses.findByDateBetween(period.startDate(), period.endDate())) {
             long amount = pesos(e.getAmount());
@@ -105,9 +122,10 @@ public class AccountingService {
         rows.sort(Comparator.comparing(TransactionRow::date).thenComparing(TransactionRow::time).reversed()
             .thenComparing(TransactionRow::id));
 
-        Long averageTicket = servicesCount > 0 ? Math.round((double) income / servicesCount) : null;
-        Summary summary = new Summary(income, income - reserve, reserve, expenseTotal, reserve - expenseTotal,
-            servicesCount, averageTicket, tips);
+        // El ticket promedio es de servicios: las ventas de productos no lo cambian
+        Long averageTicket = servicesCount > 0 ? Math.round((double) serviceIncome / servicesCount) : null;
+        Summary summary = new Summary(income, productSales, income - reserve, reserve, expenseTotal,
+            reserve - expenseTotal, servicesCount, averageTicket, tips);
         return new FullReport(period, summary, rows);
     }
 

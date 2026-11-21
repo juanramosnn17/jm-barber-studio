@@ -94,15 +94,18 @@ backend/
     ├── java/com/jmbarber/api/
     │   ├── auth/          # registro, login, JWT, /auth/me
     │   ├── services/      # catálogo y reserva por servicio
-    │   ├── schedule/      # horario de atención
-    │   ├── appointments/  # citas, horas ocupadas, estados, pagos
+    │   ├── hours/         # horario de atención
+    │   ├── appointments/  # citas, horas ocupadas, estados, ajuste de pago
     │   ├── users/         # gestión de usuarios (admin)
     │   ├── expenses/      # gastos (registrar, editar, anular, eliminar)
+    │   ├── sales/         # ventas de productos (registrar, anular, eliminar) · tarea 3.30
     │   ├── accounting/    # reporte con modelo de reserva y CSV
-    │   └── common/        # errores uniformes, seguridad, configuración
+    │   └── common/        # errores uniformes, seguridad, reloj de Colombia, CurrentUser
     └── resources/
-        ├── application.yml            # lee DB_URL, DB_USER, DB_PASSWORD, JWT_SECRET del entorno
-        └── db/migration/V1__esquema.sql
+        ├── application.properties     # lee DB_URL, DB_USER, DB_PASSWORD, JWT_SECRET de backend/.env
+        └── db/migration/
+            ├── V1__esquema_inicial.sql      # users, services, business_hours, appointments, expenses
+            └── V2__ventas_de_productos.sql  # product_sales (3.30)
 ```
 
 - **Capas por dominio:** `Controller` (HTTP y validación) → `Service` (reglas de negocio de las specs) → `Repository` (Spring Data JPA) → MySQL.

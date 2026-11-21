@@ -9,7 +9,8 @@ public final class AccountingDtos {
     private AccountingDtos() {
     }
 
-    public record Summary(long income, long yourProfit, long businessReserve, long expenses, long reserveBalance,
+    /** {@code income} ya incluye {@code productSales} (tarea 3.30). */
+    public record Summary(long income, long productSales, long yourProfit, long businessReserve, long expenses, long reserveBalance,
                           int servicesCount, Long averageTicket, long tips) {
     }
 

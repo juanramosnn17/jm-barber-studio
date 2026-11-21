@@ -136,10 +136,25 @@ Detalles (tarea 4.7):
 
 Categorías: `ARRIENDO`, `SERVICIOS_PUBLICOS`, `NOMINA_ADMINISTRATIVA`, `INSUMOS_GENERALES`, `COMPRA_INSUMOS_PRODUCTOS` (tarea 3.29), `PUBLICIDAD`, `MANTENIMIENTO`, `OTROS`.
 
+## 6b. Ventas de productos (F5, tarea 3.30)
+| Método y ruta | Cuerpo | Respuesta | Rol | Errores |
+|---|---|---|---|---|
+| `POST /product-sales` | `{ date, time?, concept, amount, paymentMethod? }` | `201 ProductSale` | ADMIN | 400 `"Por favor ingresa fecha, producto y un importe mayor a cero."` |
+| `POST /product-sales/{id}/void` | `{ reason }` | `200` (`ANULADO` + `voidReason`, `voidedAt`) | ADMIN | 400 `"Escribe el motivo de la anulación."` · 409 `"Esta venta ya está anulada."` |
+| `DELETE /product-sales/{id}` | — | `204` | ADMIN | 404 |
+
+`ProductSale = { id, date, time, concept, amount, paymentMethod, status, voidReason, voidedAt }`.
+
+- El importe se redondea a pesos enteros.
+- Por defecto: `time` = `12:00` y `paymentMethod` = `EFECTIVO`.
+- Igual que un gasto: **anular** conserva la venta con su motivo y deja de sumar; **eliminar** la borra sin rastro.
+- No hay edición; para corregir una venta se anula y se registra de nuevo.
+- La tabla `product_sales` llega con la migración Flyway `V2__ventas_de_productos.sql`.
+
 ## 7. Contabilidad (F5, modelo de reserva)
 | Método y ruta | Parámetros | Respuesta | Rol |
 |---|---|---|---|
-| `GET /accounting/report` | `period=today\|this_week\|this_month\|last_month\|custom`, `startDate`, `endDate`, `page`, `size` | `{ summary: { income, yourProfit, businessReserve, expenses, reserveBalance, servicesCount, averageTicket, tips }, transactions: { rows, total, page, totalPages } }` | ADMIN |
+| `GET /accounting/report` | `period=today\|this_week\|this_month\|last_month\|custom`, `startDate`, `endDate`, `page`, `size` | `{ period, summary: { income, productSales, yourProfit, businessReserve, expenses, reserveBalance, servicesCount, averageTicket, tips }, transactions: { rows, total, page, totalPages } }` | ADMIN |
 | `GET /accounting/report.csv` | mismos | archivo `.csv` (celdas saneadas contra fórmulas `= + - @`) | ADMIN |
 
 Fórmulas (spec F5): ingresos = Σ(precio − descuento − reembolso) de citas cobradas (+ ventas de productos, 3.30); reserva = Σ reserva fijada en cada cita; tu ganancia = ingresos − reserva; saldo = reserva − gastos registrados. Las propinas van aparte.
@@ -157,12 +172,14 @@ Detalles (tarea 4.8, mismas reglas que el motor actual `lib/accounting/`):
   - la reserva nunca supera el neto, y una cita reembolsada por completo (neto ≤ 0) no aparta reserva ni cuenta como servicio realizado.
 - **Totales:**
   - `servicesCount` = citas con neto > 0;
-  - `averageTicket` = ingresos ÷ `servicesCount`, redondeado, o `null` si no hubo servicios;
+  - `productSales` = Σ ventas de productos `REGISTRADO` (3.30). Ya están incluidas en `income` y en `yourProfit`, porque una venta no aparta reserva;
+  - `averageTicket` = ingresos **por servicios** ÷ `servicesCount`, redondeado, o `null` si no hubo servicios. Las ventas de productos no lo cambian;
   - `tips` = Σ propinas de las citas cobradas;
   - `expenses` suma solo los gastos `REGISTRADO`.
 - **`transactions.rows`:**
-  - campos: `{ id, type: "INGRESO" | "GASTO", date, time, concept, clientName, paymentMethod, income, expense, tip, status }`;
-  - incluyen las citas cobradas (concepto = servicio, con el nombre del cliente) y todos los gastos del periodo, también los anulados (`status = ANULADO`, que no suman);
+  - campos: `{ id, type: "INGRESO" | "VENTA" | "GASTO", date, time, concept, clientName, paymentMethod, income, expense, tip, status }`;
+  - incluyen las citas cobradas (concepto = servicio, con el nombre del cliente), todas las ventas de productos y todos los gastos del periodo;
+  - las ventas y los gastos anulados también se listan (`status = ANULADO`), pero no suman;
   - orden: fecha y hora descendentes;
   - `page` empieza en 1 y `size` va de 1 a 100 (por defecto 15).
 - **CSV:**
@@ -170,7 +187,7 @@ Detalles (tarea 4.8, mismas reglas que el motor actual `lib/accounting/`):
   - primero el resumen y después **todas** las filas del periodo, sin paginar;
   - una celda de texto que empieza con `=`, `+`, `-`, `@`, tabulador o retorno se antepone con `'`; las comillas se escapan (RFC 4180);
   - el archivo se descarga como `reporte-contable_{startDate}_{endDate}.csv`.
-- **Pendientes como tareas aparte:** ventas de productos (3.30) y cierre de caja (3.31).
+- **Pendiente como tarea aparte:** cierre de caja (3.31).
 
 ## Equivalencia con el contrato actual
 | Hoy (Next.js + Supabase) | Spring Boot |

@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.jmbarber.api.appointments.AppointmentDtos.AppointmentResponse;
 import com.jmbarber.api.appointments.AppointmentDtos.CreateAppointmentRequest;
 import com.jmbarber.api.appointments.AppointmentDtos.StatusRequest;
-import com.jmbarber.api.users.Role;
+import com.jmbarber.api.common.CurrentUser;
 
 /** /api/v1/appointments (docs/contratos/api-rest.md §4). Todas las rutas exigen sesión. */
 @RestController
@@ -64,7 +64,6 @@ public class AppointmentsController {
     @PatchMapping("/{id}/status")
     public AppointmentResponse changeStatus(@AuthenticationPrincipal Jwt jwt, @PathVariable String id,
                                             @Valid @RequestBody StatusRequest request) {
-        Role role = Role.valueOf(jwt.getClaimAsString("role"));
-        return service.changeStatus(jwt.getSubject(), role, id, request.status());
+        return service.changeStatus(jwt.getSubject(), CurrentUser.role(), id, request.status());
     }
 }

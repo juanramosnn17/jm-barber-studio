@@ -1,6 +1,7 @@
 package com.jmbarber.api.common;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,8 +12,15 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+
+import com.jmbarber.api.users.User;
+import com.jmbarber.api.users.UserRepository;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -22,14 +30,20 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * Seguridad de la API REST (tareas 4.1 y 4.3).
  * - Sin sesión de servidor: cada petición trae su JWT en "Authorization: Bearer".
- * - El claim "role" del token se convierte en ROLE_CLIENTE / ROLE_BARBERO / ROLE_ADMIN,
- *   que usan las reglas @PreAuthorize de cada endpoint (equivalen a las políticas RLS).
+ * - El rol actual del usuario (leído de la base en cada petición) se convierte en
+ *   ROLE_CLIENTE / ROLE_BARBERO / ROLE_ADMIN, que usan las reglas @PreAuthorize (equivalen a RLS).
  * - Rutas públicas: health, registro, inicio de sesión y el catálogo/horario de solo lectura.
  * - Sin token → 401; con token pero sin el rol → 403. Siempre { status, code, message }.
  */
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    private final UserRepository users;
+
+    public SecurityConfig(UserRepository users) {
+        this.users = users;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -53,14 +67,17 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /** Lee el claim "role" del token y lo convierte en autoridad ROLE_X. */
-    private JwtAuthenticationConverter roleConverter() {
-        JwtGrantedAuthoritiesConverter authorities = new JwtGrantedAuthoritiesConverter();
-        authorities.setAuthoritiesClaimName("role");
-        authorities.setAuthorityPrefix("ROLE_");
-        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(authorities);
-        return converter;
+    /**
+     * Convierte el token en autoridad ROLE_X con el rol ACTUAL de la base (tarea 4.6): un cambio de
+     * rol aplica de inmediato y el token de una cuenta eliminada deja de servir (401).
+     */
+    private Converter<Jwt, AbstractAuthenticationToken> roleConverter() {
+        return jwt -> {
+            User user = users.findById(jwt.getSubject())
+                .orElseThrow(() -> new InvalidBearerTokenException("La cuenta del token ya no existe."));
+            return new JwtAuthenticationToken(jwt,
+                List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())), jwt.getSubject());
+        };
     }
 
     private AuthenticationEntryPoint unauthorized() {

@@ -67,7 +67,7 @@
 - [x] 4.3 Autenticación: registro (rol siempre CLIENTE), login con BCrypt y JWT, `GET /auth/me`, y Spring Security con roles. Pruebas: credenciales incorrectas → 401; cliente en endpoint de admin → 403. Hecho con Spring Security OAuth2 Resource Server (HS256, sin librerías externas): 15 pruebas pasan y en vivo registro 201, login malo 401, `/auth/me` 200 con token y 401 sin token.
 - [x] 4.4 Servicios y horario: `GET/POST /services`, activar/desactivar, reserva por servicio, `GET/PUT /business-hours`.
 - [x] 4.5 Citas: horas ocupadas, reservar (rechaza el pasado y el turno ocupado con 409), próxima cita, agenda del día, cambio de estado con permisos por rol y fijación de la reserva al completar.
-- [ ] 4.6 Usuarios (admin): listado paginado, editar datos y rol, eliminar; el admin no puede eliminarse ni quitarse el rol.
+- [x] 4.6 Usuarios (admin): listado paginado, editar datos y rol, eliminar; el admin no puede eliminarse ni quitarse el rol.
 - [ ] 4.7 Gastos: registrar, editar, anular con motivo y eliminar; ajuste de pago de citas (método, descuento, reembolso, propina).
 - [ ] 4.8 Contabilidad: reporte con el modelo de reserva (Ingresos · Tu ganancia · Reserva · Gastos · Saldo) y exportación CSV saneada.
 - [ ] 4.9 Conectar Next.js: cliente HTTP en `lib/api/`, las Server Actions y consultas llaman a la API, token JWT en cookie `httpOnly`, y `proxy.ts` valida la sesión con `GET /auth/me`. El modo demo (store en memoria) se mantiene cuando `API_URL` no está definida.

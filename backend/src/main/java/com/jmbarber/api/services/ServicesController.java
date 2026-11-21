@@ -6,8 +6,6 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,7 +16,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.jmbarber.api.common.CurrentUser;
 import com.jmbarber.api.services.ServiceDtos.CreateServiceRequest;
+import com.jmbarber.api.users.Role;
 import com.jmbarber.api.services.ServiceDtos.ReserveRequest;
 import com.jmbarber.api.services.ServiceDtos.ServiceResponse;
 
@@ -36,7 +36,7 @@ public class ServicesController {
     /** Público: solo activos. El admin ve también los inactivos salvo que pida onlyActive=true. */
     @GetMapping
     public List<ServiceResponse> list(@RequestParam(defaultValue = "false") boolean onlyActive) {
-        return service.list(!onlyActive && isAdmin());
+        return service.list(!onlyActive && CurrentUser.role() == Role.ADMIN);
     }
 
     @PostMapping
@@ -56,11 +56,5 @@ public class ServicesController {
     @PreAuthorize("hasRole('ADMIN')")
     public ServiceResponse updateReserve(@PathVariable String id, @Valid @RequestBody ReserveRequest request) {
         return service.updateReserve(id, request.reserveAmount());
-    }
-
-    private static boolean isAdmin() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.getAuthorities().stream()
-            .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
     }
 }

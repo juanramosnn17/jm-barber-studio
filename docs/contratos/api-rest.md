@@ -26,7 +26,7 @@
 | `POST /auth/login` | `{ email, password }` | `200 { token, user }` | público | 401 `"Credenciales incorrectas. Verifica tu correo y contraseña o regístrate si aún no tienes cuenta."` |
 | `GET /auth/me` | — | `200 user` | con sesión | 401 |
 
-`user = { id, firstName, lastName, email, phone, role }`. Contraseñas con **BCrypt**; nunca se devuelven. El correo se guarda en minúsculas. El token dura **7 días** (`jwt.expiration-hours=168`) y lleva `sub` = id del usuario y `role`; `/auth/me` lee el rol actual desde la base.
+`user = { id, firstName, lastName, email, phone, role }`. Contraseñas con **BCrypt**; nunca se devuelven. El correo se guarda en minúsculas. El token dura **7 días** (`jwt.expiration-hours=168`) y lleva `sub` = id del usuario y `role`. **En cada petición** la API toma el rol actual desde la base, no el del token (tarea 4.6). Así, un cambio de rol se aplica de inmediato y el token de una cuenta eliminada responde 401.
 
 ## 2. Servicios (F1, F4)
 | Método y ruta | Cuerpo / parámetros | Respuesta | Rol |
@@ -88,6 +88,18 @@ Detalles (tarea 4.5):
 | `GET /users?page=1&size=6` | — | `{ rows: user[], total }` | ADMIN | — |
 | `PUT /users/{id}` | `{ firstName, lastName, email, phone, role }` | `200 user` | ADMIN | 409 `"No puedes quitarte a ti mismo el rol de administrador."` |
 | `DELETE /users/{id}` | — | `204` | ADMIN | 409 `"No puedes eliminar tu propia cuenta."` |
+
+Detalles (tarea 4.6):
+- **Listado:**
+  - `page` empieza en 1 y `size` va de 1 a 50 (por defecto 6);
+  - el orden es ADMIN → BARBERO → CLIENTE y luego por nombre;
+  - `user` nunca incluye la contraseña.
+- **`PUT`:**
+  - `firstName` y un `email` válido son obligatorios; si faltan → 400 `"Nombre y correo son obligatorios."`;
+  - el correo se guarda en minúsculas; si es de otra cuenta → 409 `EMAIL_TAKEN`;
+  - id inexistente → 404.
+- **`DELETE`:** también borra las citas de ese cliente (`ON DELETE CASCADE`); id inexistente → 404.
+- **Primer admin:** se crea con `backend/scripts/promote-admin.ps1 -Email <correo>` sobre una cuenta ya registrada. El registro público nunca crea admins.
 
 ## 6. Gastos (F5)
 | Método y ruta | Cuerpo | Respuesta | Rol | Errores |

@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.jmbarber.api.auth.TokenService;
 import com.jmbarber.api.users.Role;
 import com.jmbarber.api.users.User;
+import com.jmbarber.api.users.UserRepository;
 
 /** Criterios de la tarea 4.4: catálogo (F1, F4, 3.27) y horario de atención (F2, F4). */
 @SpringBootTest
@@ -38,6 +39,9 @@ class CatalogoYHorarioTest {
 
     @Autowired
     private TokenService tokens;
+
+    @Autowired
+    private UserRepository users;
 
     // ---------- Catálogo ----------
 
@@ -177,10 +181,12 @@ class CatalogoYHorarioTest {
 
     // ---------- Ayudas ----------
 
+    /** Desde la tarea 4.6 el rol se lee de la base en cada petición: el usuario debe existir. */
     private String token(Role role) {
-        User user = User.newClient("Prueba", role.name(), role.name().toLowerCase() + "@example.com", null, "x");
+        String email = role.name().toLowerCase() + "-" + UUID.randomUUID().toString().substring(0, 8) + "@example.com";
+        User user = User.newClient("Prueba", role.name(), email, null, "x");
         user.setRole(role);
-        return "Bearer " + tokens.issue(user);
+        return "Bearer " + tokens.issue(users.save(user));
     }
 
     private String crearServicio(String admin, String name, int price) throws Exception {

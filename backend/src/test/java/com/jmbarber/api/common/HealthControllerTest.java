@@ -29,7 +29,7 @@ class HealthControllerTest {
 
     @Test
     void cualquierOtraRutaSinTokenResponde401() throws Exception {
-        mvc.perform(get("/api/v1/services"))
+        mvc.perform(get("/api/v1/auth/me"))
             .andExpect(status().isUnauthorized());
     }
 }

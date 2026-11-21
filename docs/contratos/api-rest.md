@@ -22,11 +22,11 @@
 ## 1. Autenticación (F1)
 | Método y ruta | Cuerpo | Respuesta | Rol | Errores |
 |---|---|---|---|---|
-| `POST /auth/register` | `{ firstName, lastName, email, phone, password, confirmPassword, acceptsDataUse }` | `201 { token, user }` · el rol siempre es `CLIENTE` | público | `"Las contraseñas no coinciden."` · correo ya registrado (409) |
+| `POST /auth/register` | `{ firstName, lastName, email, phone, password, confirmPassword, acceptsDataUse }` (contraseña de 6 a 72 caracteres; `acceptsDataUse` debe ser `true`) | `201 { token, user }` · el rol siempre es `CLIENTE`, aunque el cuerpo traiga otro | público | 400 `"Las contraseñas no coinciden."` · 409 `EMAIL_TAKEN` `"Ya existe una cuenta con ese correo. Inicia sesión."` |
 | `POST /auth/login` | `{ email, password }` | `200 { token, user }` | público | 401 `"Credenciales incorrectas. Verifica tu correo y contraseña o regístrate si aún no tienes cuenta."` |
 | `GET /auth/me` | — | `200 user` | con sesión | 401 |
 
-`user = { id, firstName, lastName, email, phone, role }`. Contraseñas con **BCrypt**; nunca se devuelven.
+`user = { id, firstName, lastName, email, phone, role }`. Contraseñas con **BCrypt**; nunca se devuelven. El correo se guarda en minúsculas. El token dura **7 días** (`jwt.expiration-hours=168`) y lleva `sub` = id del usuario y `role`; `/auth/me` lee el rol actual desde la base.
 
 ## 2. Servicios (F1, F4)
 | Método y ruta | Cuerpo / parámetros | Respuesta | Rol |

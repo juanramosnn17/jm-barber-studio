@@ -138,20 +138,41 @@ class UsuariosTest {
 
     // ---------- Eliminar ----------
 
+    /** Borrado seguro (tarea 4.12, spec F4): libera turnos futuros y conserva el historial contable. */
     @Test
-    void eliminarBorraAlUsuarioSusCitasYSuTokenDejaDeServir() throws Exception {
+    void eliminarCancelaSusCitasFuturasConservaElHistorialYSuTokenDejaDeServir() throws Exception {
         em.flush();
         String serviceId = services.findByActiveTrueOrderBySortOrderAsc().get(0).getId();
-        jdbc.update("INSERT INTO appointments (id, client_id, service_id, date, time, status) VALUES (?, ?, ?, ?, '10:00', 'CONFIRMADA')",
-            UUID.randomUUID().toString(), cliente.getId(), serviceId, LocalDate.now().plusDays(30));
+        String futura = UUID.randomUUID().toString();
+        String cobrada = UUID.randomUUID().toString();
+        jdbc.update("""
+            INSERT INTO appointments (id, client_id, service_id, date, time, end_time, status)
+            VALUES (?, ?, ?, ?, '10:00', '10:40', 'CONFIRMADA')""",
+            futura, cliente.getId(), serviceId, LocalDate.now().plusDays(30));
+        jdbc.update("""
+            INSERT INTO appointments (id, client_id, service_id, date, time, end_time, status, payment_status,
+                                      payment_method, gross_amount)
+            VALUES (?, ?, ?, '2020-02-10', '10:00', '10:40', 'COMPLETADA', 'PAGADO', 'EFECTIVO', 25000)""",
+            cobrada, cliente.getId(), serviceId);
 
         mvc.perform(delete("/api/v1/users/{id}", cliente.getId()).header("Authorization", adminToken))
             .andExpect(status().isNoContent());
         em.flush();
 
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE id = ?", Integer.class, cliente.getId())).isZero();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM appointments WHERE client_id = ?", Integer.class, cliente.getId()))
-            .isZero();
+        // La futura quedó cancelada (turno libre) y sin dueño; la cobrada se conserva sin dueño
+        assertThat(jdbc.queryForObject("SELECT status FROM appointments WHERE id = ?", String.class, futura))
+            .isEqualTo("CANCELADA");
+        assertThat(jdbc.queryForObject("SELECT status FROM appointments WHERE id = ?", String.class, cobrada))
+            .isEqualTo("COMPLETADA");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM appointments WHERE id IN (?, ?) AND client_id IS NULL",
+            Integer.class, futura, cobrada)).isEqualTo(2);
+
+        // La contabilidad sigue sumando el cobro, a nombre de "Cliente eliminado"
+        mvc.perform(get("/api/v1/accounting/report?period=custom&startDate=2020-02-01&endDate=2020-02-28")
+                .header("Authorization", adminToken))
+            .andExpect(jsonPath("$.summary.income").value(25000))
+            .andExpect(jsonPath("$.transactions.rows[0].clientName").value("Cliente eliminado"));
         mvc.perform(get("/api/v1/auth/me").header("Authorization", clienteToken))
             .andExpect(status().isUnauthorized());
     }

@@ -17,6 +17,7 @@ import com.jmbarber.api.accounting.AccountingDtos.Summary;
 import com.jmbarber.api.accounting.AccountingDtos.TransactionRow;
 import com.jmbarber.api.accounting.AccountingDtos.TransactionsPage;
 import com.jmbarber.api.appointments.Appointment;
+import com.jmbarber.api.appointments.AppointmentDtos;
 import com.jmbarber.api.appointments.AppointmentRepository;
 import com.jmbarber.api.expenses.Expense;
 import com.jmbarber.api.expenses.ExpenseRepository;
@@ -88,7 +89,7 @@ public class AccountingService {
             reserve += appointmentReserve;
             tips += tip;
 
-            String clientName = (a.getClient().getFirstName() + " " + a.getClient().getLastName()).trim();
+            String clientName = AppointmentDtos.clientName(a); // "Cliente eliminado" si ya no existe
             rows.add(new TransactionRow(a.getId(), "INGRESO", a.getDate(), a.getTime().format(HH_MM),
                 a.getService().getName(), clientName,
                 a.getPaymentMethod() == null ? null : a.getPaymentMethod().name(),

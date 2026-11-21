@@ -21,18 +21,33 @@ public final class AppointmentDtos {
     private AppointmentDtos() {
     }
 
+    /** Nombre que se muestra para las citas de un cliente que fue eliminado (contrato §9). */
+    public static final String DELETED_CLIENT = "Cliente eliminado";
+
     /** Nunca lleva correo ni teléfono del cliente: solo nombre y apellido (spec F3, tarea 3.21). */
     public record AppointmentResponse(String id, String clientId, String clientName, String serviceId,
                                       String serviceName, String durationLabel, LocalDate date, String time,
-                                      String status, String notes, String paymentStatus, String paymentMethod) {
+                                      String endTime, String status, String notes, String paymentStatus,
+                                      String paymentMethod) {
 
         public static AppointmentResponse from(Appointment a) {
-            String clientName = (a.getClient().getFirstName() + " " + a.getClient().getLastName()).trim();
-            return new AppointmentResponse(a.getId(), a.getClient().getId(), clientName, a.getService().getId(),
-                a.getService().getName(), a.getService().getDurationLabel(), a.getDate(), format(a.getTime()),
-                a.getStatus().name(), a.getNotes(), a.getPaymentStatus().name(),
-                a.getPaymentMethod() == null ? null : a.getPaymentMethod().name());
+            return new AppointmentResponse(a.getId(), a.getClient() == null ? null : a.getClient().getId(),
+                AppointmentDtos.clientName(a), a.getService().getId(), a.getService().getName(), a.getService().getDurationLabel(),
+                a.getDate(), format(a.getTime()), format(a.getEndTime()), a.getStatus().name(), a.getNotes(),
+                a.getPaymentStatus().name(), a.getPaymentMethod() == null ? null : a.getPaymentMethod().name());
         }
+    }
+
+    /** Rango ocupado de la agenda, sin datos de nadie (GET /appointments/booked-ranges). */
+    public record BookedRange(String start, String end) {
+    }
+
+    /** "Nombre Apellido" del cliente, o "Cliente eliminado" si ya no existe. */
+    public static String clientName(Appointment a) {
+        if (a.getClient() == null) {
+            return DELETED_CLIENT;
+        }
+        return (a.getClient().getFirstName() + " " + a.getClient().getLastName()).trim();
     }
 
     public record CreateAppointmentRequest(

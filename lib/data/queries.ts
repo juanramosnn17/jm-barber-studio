@@ -25,7 +25,8 @@ import {
   type ApiService,
   type ApiUser,
 } from "@/lib/api/mappers";
-import { toISODate } from "@/lib/format";
+import { minutesToTime, timeToMinutes, toISODate } from "@/lib/format";
+import type { BookedRange } from "@/lib/schedule";
 import { getSessionUserProfile } from "@/lib/auth/session";
 import type {
   AppointmentStatus,
@@ -248,21 +249,21 @@ export async function getAppointmentsByDate(date: string): Promise<AppointmentWi
 }
 
 /**
- * Devuelve únicamente las horas ("HH:MM") ya ocupadas en una fecha determinada
- * para evitar el cruce de citas (overbooking) en el BookingWizard.
+ * Rangos [inicio, fin) ya ocupados en una fecha, sin datos de nadie, para que el
+ * BookingWizard solo ofrezca horas donde el servicio elegido cabe completo (tarea 4.12).
  */
-export async function getBookedSlotsByDate(date: string): Promise<string[]> {
+export async function getBookedRangesByDate(date: string): Promise<BookedRange[]> {
   if (isApiConfigured()) {
-    const res = await apiRequest<string[]>(`/appointments/booked-slots?date=${encodeURIComponent(date)}`);
+    const res = await apiRequest<BookedRange[]>(`/appointments/booked-ranges?date=${encodeURIComponent(date)}`);
     if (!res.ok) {
-      console.error("Error al leer horas ocupadas en la API:", res.message);
+      console.error("Error al leer horarios ocupados en la API:", res.message);
       return [];
     }
     return res.data;
   }
 
-  // Con Supabase: la función get_booked_slots devuelve las horas ocupadas por
-  // cualquier cliente (RLS no deja ver citas ajenas). Tarea 3.5 / 3.6.
+  // Con Supabase: get_booked_slots solo devuelve las horas de inicio (el esquema actual no
+  // guarda el fin), así que cada una ocupa un turno (slot_minutes). Tarea 3.5 / 3.6.
   if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("get_booked_slots", { p_date: date });
@@ -270,17 +271,22 @@ export async function getBookedSlotsByDate(date: string): Promise<string[]> {
       console.error("Error al leer horas ocupadas en Supabase:", error.message);
       return [];
     }
-    return (data as string[] | null) ?? [];
+    const { slot_minutes } = await getBusinessHours();
+    return ((data as string[] | null) ?? []).map((start) => ({
+      start: start.slice(0, 5),
+      end: minutesToTime(timeToMinutes(start.slice(0, 5)) + slot_minutes),
+    }));
   }
 
-  const appointments = await getAppointmentsByDate(date);
-  return Array.from(
-    new Set(
-      appointments
-        .filter((a) => a.status !== "cancelada")
-        .map((a) => a.time.slice(0, 5))
-    )
-  );
+  // Modo demo: el fin sale de la duración del servicio de cada cita
+  const services = getStoredServices();
+  return (await getAppointmentsByDate(date))
+    .filter((a) => a.status !== "cancelada")
+    .map((a) => {
+      const minutes = services.find((s) => s.id === a.service_id)?.duration_minutes ?? 30;
+      const start = a.time.slice(0, 5);
+      return { start, end: minutesToTime(timeToMinutes(start) + minutes) };
+    });
 }
 
 /* ---------------------------------------------------------------------

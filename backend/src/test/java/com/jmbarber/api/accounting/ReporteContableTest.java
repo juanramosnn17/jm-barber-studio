@@ -263,9 +263,9 @@ class ReporteContableTest {
     private void cita(String date, String time, String status, String paymentStatus, Integer gross,
                       int discount, int refund, int tip, Integer reserve) {
         jdbc.update("""
-            INSERT INTO appointments (id, client_id, service_id, date, time, status, payment_status, payment_method,
+            INSERT INTO appointments (id, client_id, service_id, date, time, end_time, status, payment_status, payment_method,
                                       gross_amount, discount_amount, refund_amount, tip_amount, reserve_amount)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'EFECTIVO', ?, ?, ?, ?, ?)""",
+            VALUES (?, ?, ?, ?, ?, '23:59:00', ?, ?, 'EFECTIVO', ?, ?, ?, ?, ?)""",
             UUID.randomUUID().toString(), cliente.getId(), corte.getId(), date, time, status, paymentStatus,
             gross, discount, refund, tip, reserve);
     }

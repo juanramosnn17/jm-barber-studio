@@ -87,7 +87,9 @@ export default function NextAppointmentCard({ appointment }: NextAppointmentCard
               {formatLongDate(appointment.date)}
             </span>
             <span className="font-body-sm text-on-surface-variant">
-              {formatTime12h(appointment.time)} • {appointment.duration_label || "Duración estándar"}
+              {formatTime12h(appointment.time)}
+              {appointment.end_time ? ` – ${formatTime12h(appointment.end_time)}` : ""} •{" "}
+              {appointment.duration_label || "Duración estándar"}
             </span>
           </div>
         </div>

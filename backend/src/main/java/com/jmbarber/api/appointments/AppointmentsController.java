@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.jmbarber.api.appointments.AppointmentDtos.AppointmentResponse;
+import com.jmbarber.api.appointments.AppointmentDtos.BookedRange;
 import com.jmbarber.api.appointments.AppointmentDtos.CreateAppointmentRequest;
 import com.jmbarber.api.appointments.AppointmentDtos.PaymentRequest;
 import com.jmbarber.api.appointments.AppointmentDtos.PaymentResponse;
@@ -42,6 +43,12 @@ public class AppointmentsController {
     @GetMapping("/booked-slots")
     public List<String> bookedSlots(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return service.bookedSlots(date);
+    }
+
+    /** Rangos [inicio, fin) ocupados del día, sin datos personales (tarea 4.12). */
+    @GetMapping("/booked-ranges")
+    public List<BookedRange> bookedRanges(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return service.bookedRanges(date);
     }
 
     @PostMapping

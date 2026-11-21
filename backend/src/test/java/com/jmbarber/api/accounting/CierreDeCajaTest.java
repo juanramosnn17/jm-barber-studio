@@ -100,8 +100,8 @@ class CierreDeCajaTest {
         venta(DIA, "EFECTIVO", 18000, "ANULADO");
         gasto(DIA, "EFECTIVO", 9000, "ANULADO");
         jdbc.update("""
-            INSERT INTO appointments (id, client_id, service_id, date, time, status, payment_status, payment_method, gross_amount)
-            VALUES (?, ?, ?, ?, '11:00', 'COMPLETADA', 'ANULADO', 'EFECTIVO', 25000)""",
+            INSERT INTO appointments (id, client_id, service_id, date, time, end_time, status, payment_status, payment_method, gross_amount)
+            VALUES (?, ?, ?, ?, '11:00', '23:59:00', 'COMPLETADA', 'ANULADO', 'EFECTIVO', 25000)""",
             UUID.randomUUID().toString(), cliente.getId(), corte.getId(), DIA);
 
         cierre(DIA).andExpect(jsonPath("$.expectedCash").value(25000));
@@ -148,9 +148,9 @@ class CierreDeCajaTest {
 
     private void cita(String date, String time, String method, int gross, int discount, int tip) {
         jdbc.update("""
-            INSERT INTO appointments (id, client_id, service_id, date, time, status, payment_status, payment_method,
+            INSERT INTO appointments (id, client_id, service_id, date, time, end_time, status, payment_status, payment_method,
                                       gross_amount, discount_amount, tip_amount, reserve_amount)
-            VALUES (?, ?, ?, ?, ?, 'COMPLETADA', 'PAGADO', ?, ?, ?, ?, 0)""",
+            VALUES (?, ?, ?, ?, ?, '23:59:00', 'COMPLETADA', 'PAGADO', ?, ?, ?, ?, 0)""",
             UUID.randomUUID().toString(), cliente.getId(), corte.getId(), date, time, method, gross, discount, tip);
     }
 

@@ -231,14 +231,37 @@ Detalles (tarea 4.8, mismas reglas que el motor actual `lib/accounting/`):
 | `loginAction` / `registerAction` / `logoutAction` | `POST /auth/login` · `POST /auth/register` · el frontend borra su cookie |
 | `getServices` · `createServiceAction` · `toggleServiceActiveAction` · `updateServiceReserveAction` | `GET /services` · `POST /services` · `PATCH /services/{id}/active` · `PATCH /services/{id}/reserve` |
 | `getBusinessHours` · `updateBusinessHoursAction` | `GET` / `PUT /business-hours` |
-| `getBookedSlotsByDate` · `createAppointmentAction` · `getNextAppointment` · `getAppointmentsByDate` · `updateAppointmentStatusAction` · `adjustAppointmentPaymentAction` | `/appointments/...` |
+| `getBookedRangesByDate` (`/appointments/booked-ranges`) · `createAppointmentAction` · `getNextAppointment` · `getAppointmentsByDate` · `updateAppointmentStatusAction` · `adjustAppointmentPaymentAction` | `/appointments/...` |
 | `getProfilesPage` · `updateUserAction` · `deleteUserAction` | `/users/...` |
 | `createExpenseAction` · `updateExpenseAction` · `voidExpenseAction` · `deleteExpenseAction` | `/expenses/...` |
 | `/api/accounting/profit-report` | `/accounting/report` (+ `.csv`) |
 | RLS + `get_my_role()` + `requireRole` | Spring Security (`@PreAuthorize`) + validación por dueño en el servicio |
 
-## 9. Alineación pendiente con el modelo U4 (`docs/datos/modelo.md`, tarea 4.12 · migración Flyway `V3`)
-> Cambios acordados en la entrevista de datos U4 que el backend Spring Boot incorporará después de completar la tarea 4.9 (sin editar `V1` ni `V2`):
+## 9. Alineación con el modelo U4 (`docs/datos/modelo.md`, tarea 4.12 · migración Flyway `V3`)
+> Cambios acordados en la entrevista de datos U4, sin editar `V1` ni `V2`. Detalle de la implementación (tarea 4.12):
+- **Migración `V3__duracion_y_borrado_seguro.sql`:**
+  - agrega `appointments.end_time TIME NOT NULL` (las citas existentes se completan con `time` + la duración del servicio) y el `CHECK (end_time > time)`;
+  - deja `appointments.client_id` en `NULL` permitido, con la FK en `ON DELETE SET NULL`.
+- **Reservar (`POST /appointments`):**
+  - el servidor calcula `end_time = time + durationMinutes` del servicio; el cliente nunca lo envía;
+  - el rango `[time, end_time)` debe empezar en un turno del horario (`slotMinutes`), terminar a más tardar al cierre y no cruzar el descanso. Si no → 400 `"Ese horario no está disponible. Elige un turno de la lista."`;
+  - si se solapa con otra cita no cancelada de ese día → 409 `SLOT_TAKEN`.
+  - **Concurrencia:** MySQL no tiene restricciones de exclusión, así que cada reserva o reactivación bloquea la fila única de `business_hours` (`SELECT … FOR UPDATE`) mientras revisa el solapamiento. Las reservas se procesan una a la vez y dos rangos solapados nunca quedan guardados. El `UNIQUE` del turno activo sigue como segunda barrera.
+- **`GET /appointments/booked-ranges?date=`** (con sesión): `[{ "start": "09:00", "end": "10:00" }]`, los rangos ocupados de citas no canceladas, por hora, sin datos personales. `booked-slots` se mantiene.
+- **`Appointment`** agrega `endTime` (`"HH:mm"`). Si el cliente fue eliminado: `clientId = null` y `clientName = "Cliente eliminado"`. Lo mismo en las filas del reporte contable.
+- **Cambiar estado:**
+  - si la cita está `COMPLETADA`, solo el `ADMIN` puede cambiar su estado; el `BARBERO` recibe 403 `FORBIDDEN` y el cobro no se altera;
+  - reactivar una cita cancelada también revisa el solapamiento (409 `SLOT_TAKEN`).
+- **Borrar usuario (`DELETE /users/{id}`):**
+  - antes de borrarlo se cancelan sus citas activas (`PENDIENTE`/`CONFIRMADA`) que aún no han pasado, para liberar los turnos;
+  - las demás citas quedan con `client_id = NULL` y se conservan en la contabilidad.
+- **Errores genéricos** (auditoría, hallazgo 8). Siempre en español y sin detalles internos (el detalle va al log):
+  - conflicto de integridad no previsto → 409 `CONFLICT` `"No se pudo guardar porque entra en conflicto con otros datos."`;
+  - método no permitido → 405 `METHOD_NOT_ALLOWED` `"Esta operación no está permitida."`;
+  - ruta inexistente → 404 `NOT_FOUND` `"El recurso no existe."`;
+  - cualquier otro error → 500 `INTERNAL_ERROR` `"Ocurrió un error inesperado. Inténtalo de nuevo."`.
+
+Resumen original de la alineación:
 - ~~`PUT /services/{id}`~~: ya implementado en la tarea 4.9 (ver §2).
 - **Duración real y no solapamiento en citas (`appointments.end_time`):** migración `V3` agrega `end_time TIME NOT NULL` (congelado al reservar como `time + service.durationMinutes`), valida en `AppointmentService` que el rango `[time, end_time)` quepa dentro de `business_hours` sin cruzar descanso ni solaparse con otra cita no cancelada (`409 SLOT_TAKEN`), y expone rangos ocupados (`GET /appointments/booked-ranges?date=`).
 - **Borrado seguro de usuarios (`ON DELETE SET NULL`):** migración `V3` permite `appointments.client_id NULL` y cambia la FK a `ON DELETE SET NULL`; antes de borrar el usuario en `UserAdminService.delete`, se cancelan sus citas futuras activas para liberar los turnos, conservando las citas históricas como `"Cliente eliminado"` en contabilidad.

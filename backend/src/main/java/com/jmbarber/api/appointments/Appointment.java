@@ -34,8 +34,9 @@ public class Appointment {
     @Column(columnDefinition = "char(36)")
     private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "client_id", nullable = false, columnDefinition = "char(36)")
+    /** null cuando el cliente fue eliminado (V3: ON DELETE SET NULL); la cita se conserva en contabilidad. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id", columnDefinition = "char(36)")
     private User client;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -47,6 +48,10 @@ public class Appointment {
 
     @Column(nullable = false)
     private LocalTime time;
+
+    /** Fin de la cita congelado al reservar: time + duración del servicio (V3, tarea 4.12). */
+    @Column(name = "end_time", nullable = false)
+    private LocalTime endTime;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false,
@@ -90,14 +95,19 @@ public class Appointment {
         // requerido por JPA
     }
 
-    /** Reserva hecha por el cliente: queda CONFIRMADA (spec F2). */
-    public static Appointment book(User client, BarberService service, LocalDate date, LocalTime time, String notes) {
+    /**
+     * Reserva hecha por el cliente: queda CONFIRMADA (spec F2). El fin lo decide el servidor
+     * (AppointmentService ya validó que [time, endTime) cabe en el horario del día).
+     */
+    public static Appointment book(User client, BarberService service, LocalDate date, LocalTime time,
+                                   LocalTime endTime, String notes) {
         Appointment a = new Appointment();
         a.id = UUID.randomUUID().toString();
         a.client = client;
         a.service = service;
         a.date = date;
         a.time = time;
+        a.endTime = endTime;
         a.notes = notes;
         a.status = Status.CONFIRMADA;
         return a;
@@ -142,6 +152,7 @@ public class Appointment {
     public BarberService getService() { return service; }
     public LocalDate getDate() { return date; }
     public LocalTime getTime() { return time; }
+    public LocalTime getEndTime() { return endTime; }
     public Status getStatus() { return status; }
     public String getNotes() { return notes; }
     public PaymentStatus getPaymentStatus() { return paymentStatus; }

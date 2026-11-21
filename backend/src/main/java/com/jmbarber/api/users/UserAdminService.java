@@ -1,10 +1,14 @@
 package com.jmbarber.api.users;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.jmbarber.api.appointments.AppointmentRepository;
 import com.jmbarber.api.common.ApiException;
 import com.jmbarber.api.users.UserAdminDtos.UpdateUserRequest;
 import com.jmbarber.api.users.UserAdminDtos.UsersPage;
@@ -19,9 +23,13 @@ public class UserAdminService {
     static final String NOT_FOUND = "El usuario no existe.";
 
     private final UserRepository users;
+    private final AppointmentRepository appointments;
+    private final Clock clock;
 
-    public UserAdminService(UserRepository users) {
+    public UserAdminService(UserRepository users, AppointmentRepository appointments, Clock clock) {
         this.users = users;
+        this.appointments = appointments;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
@@ -56,12 +64,20 @@ public class UserAdminService {
         return UserDto.from(user);
     }
 
+    /**
+     * Borrado seguro (contrato §9, tarea 4.12): primero se cancelan sus citas activas que aún no han
+     * pasado, para liberar los turnos; luego se borra el usuario y MySQL deja sus demás citas con
+     * client_id = NULL (FK ON DELETE SET NULL), así la contabilidad no se descuadra.
+     */
     @Transactional
     public void delete(String adminId, String userId) {
         if (userId.equals(adminId)) {
             throw ApiException.conflict("SELF_DELETE", SELF_DELETE);
         }
-        users.delete(find(userId)); // sus citas se borran en cascada (FK ON DELETE CASCADE)
+        find(userId); // 404 si no existe
+        LocalDateTime now = LocalDateTime.now(clock);
+        appointments.cancelUpcomingOf(userId, now.toLocalDate(), now.toLocalTime());
+        users.delete(find(userId)); // se vuelve a leer: cancelUpcomingOf limpia el contexto de JPA
     }
 
     private User find(String id) {

@@ -3,23 +3,21 @@
 import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import type { BusinessHours, Service } from "@/lib/types";
-import { formatFullDate, formatPrice, toISODate } from "@/lib/format";
-import { generateDailySlots, isOpenOn } from "@/lib/schedule";
-import { getBookedSlotsByDate } from "@/lib/data/queries";
+import { formatFullDate, formatPrice, minutesToTime, timeToMinutes, toISODate } from "@/lib/format";
+import { generateDailySlots, isOpenOn, type BookedRange } from "@/lib/schedule";
+import { getBookedRangesByDate } from "@/lib/data/queries";
 import { createAppointmentAction } from "@/lib/actions";
 
 interface BookingWizardProps {
   services: Service[];
   businessHours: BusinessHours;
   initialServiceId?: string;
-  initialBookedSlots?: string[];
 }
 
 export default function BookingWizard({
   services,
   businessHours,
   initialServiceId,
-  initialBookedSlots = [],
 }: BookingWizardProps) {
   // Preseleccionar según ID o el primero
   const initialService =
@@ -31,7 +29,7 @@ export default function BookingWizard({
 
   // Fecha seleccionada (por defecto hoy)
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
-  const [bookedSlots, setBookedSlots] = useState<string[]>(initialBookedSlots);
+  const [bookedRanges, setBookedRanges] = useState<BookedRange[]>([]);
   // Fecha cuyas horas ocupadas ya se cargaron (la carga se deduce de esto, sin setState en el efecto)
   const [slotsLoadedFor, setSlotsLoadedFor] = useState<string | null>(null);
   // Horario que el cliente tocó; el horario efectivo se calcula más abajo
@@ -49,20 +47,20 @@ export default function BookingWizard({
 
   const selectedDateISO = toISODate(selectedDate);
 
-  // Consultar las horas ocupadas (por cualquier cliente) de la fecha seleccionada
-  // para evitar overbooking. Con Supabase usa get_booked_slots (tarea 3.6).
+  // Consultar los rangos ocupados (por cualquier cliente, sin sus datos) de la fecha
+  // seleccionada para evitar cruces de citas (tarea 4.12; con Supabase, get_booked_slots).
   useEffect(() => {
     let active = true;
 
-    getBookedSlotsByDate(selectedDateISO)
+    getBookedRangesByDate(selectedDateISO)
       .then((occupied) => {
         if (!active) return;
-        setBookedSlots(occupied);
+        setBookedRanges(occupied);
         setSlotsLoadedFor(selectedDateISO);
       })
       .catch(() => {
         if (!active) return;
-        setBookedSlots([]);
+        setBookedRanges([]);
         setSlotsLoadedFor(selectedDateISO);
       });
 
@@ -73,8 +71,13 @@ export default function BookingWizard({
 
   const isLoadingSlots = slotsLoadedFor !== selectedDateISO;
 
-  // Generar turnos para el día seleccionado excluyendo las horas ya reservadas
-  const availableSlots = generateDailySlots(businessHours, bookedSlots, selectedDateISO);
+  // Horas donde el servicio elegido cabe completo, sin cruzar otras citas ni el descanso
+  const availableSlots = generateDailySlots(
+    businessHours,
+    bookedRanges,
+    selectedDateISO,
+    selectedService?.duration_minutes
+  );
   const isOpen = isOpenOn(selectedDate, businessHours);
 
   // Horario efectivo: el que tocó el cliente si sigue disponible; si no, el primero libre
@@ -104,8 +107,12 @@ export default function BookingWizard({
         selectedSlot
       );
       if (res.ok) {
-        // Actualización optimista: eliminar el turno recién reservado de la interfaz
-        setBookedSlots((prev) => Array.from(new Set([...prev, selectedSlot])));
+        // Actualización optimista: el rango recién reservado deja de ofrecerse
+        const start = timeToMinutes(selectedSlot);
+        setBookedRanges((prev) => [
+          ...prev,
+          { start: selectedSlot, end: minutesToTime(start + selectedService.duration_minutes) },
+        ]);
         setConfirmedBooking({
           id: res.appointmentId || `JM-${Date.now().toString().slice(-6)}`,
           serviceName: selectedService.name,

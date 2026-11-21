@@ -44,13 +44,14 @@ export type ApiService = {
 
 export type ApiAppointment = {
   id: string;
-  clientId: string;
+  clientId: string | null; // null si el cliente fue eliminado (clientName = "Cliente eliminado")
   clientName: string;
   serviceId: string;
   serviceName: string;
   durationLabel: string;
   date: string;
   time: string;
+  endTime: string;
   status: string;
   notes: string | null;
   paymentStatus: string;
@@ -110,12 +111,13 @@ export function toService(s: ApiService): Service {
 export function toAppointment(a: ApiAppointment): AppointmentWithDetails {
   return {
     id: a.id,
-    client_id: a.clientId,
+    client_id: a.clientId ?? "", // "" = cliente eliminado; no coincide con ningún usuario
     service_id: a.serviceId,
     barber_name: null, // un solo barbero: no se asigna (decisión del estudiante)
     chair: null,
     date: a.date,
     time: a.time,
+    end_time: a.endTime,
     status: lower<AppointmentStatus>(a.status),
     notes: a.notes,
     payment_status: lower<PaymentStatus>(a.paymentStatus),

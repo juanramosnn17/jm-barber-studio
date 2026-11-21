@@ -45,3 +45,19 @@ Para validar la URL pública de Vercel (`https://jm-barber-studio-delta.vercel.a
 4. **Doble reserva / solapamiento (`409`):** dos pestañas intentando reservar el mismo turno (o rangos solapados) → solo una queda guardada y la segunda recibe `"Este bloque horario ya está ocupado. Por favor elige otro turno."`.
 5. **Acceso cruzado (A → B):** usuario A intenta cancelar una cita del usuario B → rechazado y la cita de B sigue intacta.
 6. **Sin clave secreta en el front:** `grep -r "service_role\|sb_secret_" .next/static` tras `npm run build` → 0 resultados.
+
+---
+
+## 4. Seguimiento (2026-11-21) · backend Spring Boot
+
+El estudiante eligió Spring Boot + MySQL como backend de la U4 (ver `docs/decisiones.md`). Estado de los hallazgos:
+
+| # | Estado | Cómo se cerró / dónde sigue |
+|---|---|---|
+| 2 | **Cerrado en Spring Boot (4.12)** | `AppointmentService.changeStatus`: si la cita está `COMPLETADA`, solo `ADMIN`; el `BARBERO` recibe 403. Prueba `CitasTest.elBarberoNoPuedeCambiarUnaCitaCompletadaPeroElAdminSi` y prueba en vivo. |
+| 3 | **Pendiente → tarea 4.13** | `queries.ts` a `server-only` y lecturas públicas en un archivo `"use server"` aparte. |
+| 4 | **Cerrado en Spring Boot (4.12)** | Migración `V3` (`end_time`); el servidor valida que `[time, end_time)` quepa en el horario y no se cruce con otra cita, con un cerrojo `SELECT … FOR UPDATE` porque MySQL no tiene `EXCLUDE`. El `BookingWizard` solo ofrece horas donde el servicio cabe. |
+| 7 | **Pendiente → tarea 4.13** | Validador común de `return_url`. |
+| 8 | **Cerrado (4.12)** | `GlobalExceptionHandler` responde 409/405/404/500 en español sin detalles internos; el detalle va al log. |
+| 11 | **Parcial (4.9)** | `PUT /services/{id}` implementado; sigue pendiente restringir `image_url` a rutas locales. |
+| 14 | **Parcial (4.12)** | `ON DELETE SET NULL` aplicado en `V3`; siguen para la U6 la validación de `iss`, las cabeceras HTTP y el *rate limiting*. |

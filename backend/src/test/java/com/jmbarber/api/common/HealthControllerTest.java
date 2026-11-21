@@ -32,4 +32,13 @@ class HealthControllerTest {
         mvc.perform(get("/api/v1/auth/me"))
             .andExpect(status().isUnauthorized());
     }
+
+    /** Errores genéricos (tarea 4.12, auditoría hallazgo 8): siempre { status, code, message } en español. */
+    @Test
+    void metodoNoPermitidoResponde405ConElFormatoDelContrato() throws Exception {
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/health"))
+            .andExpect(status().isMethodNotAllowed())
+            .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"))
+            .andExpect(jsonPath("$.message").value("Esta operación no está permitida."));
+    }
 }

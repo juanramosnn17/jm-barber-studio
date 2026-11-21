@@ -150,10 +150,11 @@ export default function DailyAppointmentsList({
                     </div>
                     <div className="flex items-center gap-space-xs text-on-surface-variant font-body-sm mt-0.5">
                       <span>{app.service_name}</span>
-                      {app.duration_label && (
+                      {(app.end_time || app.duration_label) && (
                         <>
                           <span className="text-outline-variant">•</span>
-                          <span>{app.duration_label}</span>
+                          {/* Con la API se conoce el fin real congelado al reservar (tarea 4.12) */}
+                          <span>{app.end_time ? `${app.time} – ${app.end_time}` : app.duration_label}</span>
                         </>
                       )}
                     </div>

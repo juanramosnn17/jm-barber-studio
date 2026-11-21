@@ -96,6 +96,7 @@ export interface Appointment {
   chair: string | null; // Sillón asignado (p. ej. "Sillón 01")
   date: string; // Fecha "YYYY-MM-DD"
   time: string; // Hora "HH:MM" (24 h)
+  end_time?: string | null; // Fin "HH:MM" congelado al reservar (API Spring Boot, tarea 4.12)
   status: AppointmentStatus;
   notes: string | null;
   payment_status?: PaymentStatus;

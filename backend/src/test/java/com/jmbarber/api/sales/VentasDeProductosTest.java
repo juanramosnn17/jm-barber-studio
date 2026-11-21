@@ -194,9 +194,9 @@ class VentasDeProductosTest {
 
     private void cita(String date, String time, int gross, int reserve) {
         jdbc.update("""
-            INSERT INTO appointments (id, client_id, service_id, date, time, status, payment_status, payment_method,
+            INSERT INTO appointments (id, client_id, service_id, date, time, end_time, status, payment_status, payment_method,
                                       gross_amount, reserve_amount)
-            VALUES (?, ?, ?, ?, ?, 'COMPLETADA', 'PAGADO', 'EFECTIVO', ?, ?)""",
+            VALUES (?, ?, ?, ?, ?, '23:59:00', 'COMPLETADA', 'PAGADO', 'EFECTIVO', ?, ?)""",
             UUID.randomUUID().toString(), cliente.getId(), corte.getId(), date, time, gross, reserve);
     }
 

@@ -252,7 +252,91 @@ class CitasTest {
             .andExpect(jsonPath("$.code").value("SLOT_TAKEN"));
     }
 
+    // ---------- Duración real y no solapamiento (tarea 4.12, spec F2) ----------
+
+    @Test
+    void laCitaCongelaSuFinConLaDuracionDelServicio() throws Exception {
+        reservarServicio(cliente, servicio("Corte Pro (Cabello + Barba)"), monday, "09:00") // 60 min
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.time").value("09:00"))
+            .andExpect(jsonPath("$.endTime").value("10:00"));
+    }
+
+    @Test
+    void unRangoQueSeCruzaConOtraCitaResponde409AunqueEmpieceEnOtraHora() throws Exception {
+        reservarServicio(cliente, servicio("Corte Pro (Cabello + Barba)"), monday, "09:00") // 09:00–10:00
+            .andExpect(status().isCreated());
+
+        reservar(otroCliente, monday, "09:30") // 09:30–10:10: se cruza
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.code").value("SLOT_TAKEN"));
+        reservarServicio(otroCliente, servicio("Corte Pro (Cabello + Barba)"), monday, "08:30") // antes de abrir
+            .andExpect(status().isBadRequest());
+        reservar(otroCliente, monday, "10:00") // empieza justo al terminar la otra: no se cruza
+            .andExpect(status().isCreated());
+    }
+
+    @Test
+    void elRangoNoPuedeCruzarElDescansoNiPasarDelCierre() throws Exception {
+        // Corte Pro (60 min) a las 13:30 terminaría 14:30, dentro del descanso 14:00–15:00
+        reservarServicio(cliente, servicio("Corte Pro (Cabello + Barba)"), monday, "13:30")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value(AppointmentService.OUTSIDE_HOURS));
+        // Arreglo de cejas (15 min) a las 13:30 sí cabe antes del descanso
+        reservarServicio(cliente, servicio("Arreglo de cejas"), monday, "13:30").andExpect(status().isCreated());
+        // Ultra Pro Max (90 min) a las 19:00 terminaría 20:30, después del cierre (20:00)
+        reservarServicio(cliente, servicio("Corte Ultra Pro Max"), monday, "19:00")
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void rangosOcupadosSinDatosPersonales() throws Exception {
+        reservarServicio(cliente, servicio("Corte Pro (Cabello + Barba)"), monday, "16:00").andExpect(status().isCreated());
+        reservar(otroCliente, monday, "09:00").andExpect(status().isCreated());
+
+        mvc.perform(get("/api/v1/appointments/booked-ranges").param("date", monday.toString())
+                .header("Authorization", otroCliente))
+            .andExpect(status().isOk())
+            .andExpect(content().json("""
+                [{"start":"09:00","end":"09:40"},{"start":"16:00","end":"17:00"}]""", true));
+    }
+
+    @Test
+    void reactivarUnaCitaCuyoRangoYaSeCruzaResponde409() throws Exception {
+        String id = idDe(reservarServicio(cliente, servicio("Corte Pro (Cabello + Barba)"), monday, "11:00")
+            .andExpect(status().isCreated())); // 11:00–12:00
+        estado(cliente, id, "CANCELADA").andExpect(status().isOk());
+        reservar(otroCliente, monday, "11:30").andExpect(status().isCreated()); // 11:30–12:10
+
+        estado(admin, id, "CONFIRMADA").andExpect(status().isConflict());
+    }
+
+    // ---------- Cerradura del barbero sobre citas cobradas (tarea 4.12, spec F3) ----------
+
+    @Test
+    void elBarberoNoPuedeCambiarUnaCitaCompletadaPeroElAdminSi() throws Exception {
+        String id = idDe(reservar(cliente, monday, "17:00").andExpect(status().isCreated()));
+        estado(barbero, id, "COMPLETADA").andExpect(status().isOk());
+
+        estado(barbero, id, "EN_CURSO")
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        estado(barbero, id, "CANCELADA").andExpect(status().isForbidden());
+        estado(admin, id, "EN_CURSO").andExpect(status().isOk());
+    }
+
     // ---------- Ayudas ----------
+
+    private String servicio(String name) {
+        return services.findAllByOrderBySortOrderAsc().stream()
+            .filter(s -> s.getName().equals(name)).findFirst().orElseThrow().getId();
+    }
+
+    private ResultActions reservarServicio(String auth, String serviceId, LocalDate date, String time) throws Exception {
+        return mvc.perform(post("/api/v1/appointments").header("Authorization", auth)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"serviceId\":\"%s\",\"date\":\"%s\",\"time\":\"%s\"}".formatted(serviceId, date, time)));
+    }
 
     private String token(String firstName, String lastName, Role role) {
         String email = role.name().toLowerCase() + "-" + UUID.randomUUID().toString().substring(0, 8) + "@example.com";

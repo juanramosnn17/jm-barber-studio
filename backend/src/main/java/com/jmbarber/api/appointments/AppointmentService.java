@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.jmbarber.api.appointments.AppointmentDtos.AppointmentResponse;
+import com.jmbarber.api.appointments.AppointmentDtos.BookedRange;
 import com.jmbarber.api.appointments.AppointmentDtos.CreateAppointmentRequest;
 import com.jmbarber.api.appointments.AppointmentDtos.PaymentRequest;
 import com.jmbarber.api.appointments.AppointmentDtos.PaymentResponse;
@@ -77,16 +78,22 @@ public class AppointmentService {
         if (!LocalDateTime.of(req.date(), time).isAfter(LocalDateTime.now(clock))) {
             throw ApiException.badRequest(PAST_SLOT);
         }
-        if (!isOfferedSlot(req.date(), time)) {
+
+        // Cerrojo: bloquea la fila del horario hasta el commit, para que revisar el solapamiento
+        // y guardar ocurra de a una reserva a la vez (MySQL no tiene EXCLUDE de rangos).
+        BusinessHours h = hours.lockById(BusinessHours.SINGLE_ROW_ID)
+            .orElseThrow(() -> ApiException.badRequest(OUTSIDE_HOURS));
+        LocalTime end = rangeEnd(h, req.date(), time, service.getDurationMinutes());
+        if (end == null) {
             throw ApiException.badRequest(OUTSIDE_HOURS);
         }
-        if (appointments.isSlotTaken(req.date(), time)) {
+        if (appointments.overlaps(req.date(), time, end, "")) {
             throw slotTaken();
         }
 
         User client = users.findById(userId).orElseThrow(AppointmentService::sessionGone);
         String notes = req.notes() == null || req.notes().isBlank() ? null : req.notes().trim();
-        Appointment appointment = Appointment.book(client, service, req.date(), time, notes);
+        Appointment appointment = Appointment.book(client, service, req.date(), time, end, notes);
         try {
             appointments.saveAndFlush(appointment); // el índice UNIQUE resuelve dos reservas simultáneas
         } catch (DataIntegrityViolationException ex) {
@@ -113,20 +120,32 @@ public class AppointmentService {
             .orElseThrow(() -> ApiException.notFound("La cita no existe."));
 
         if (role == Role.CLIENTE) {
-            boolean own = appointment.getClient().getId().equals(userId);
+            boolean own = appointment.getClient() != null && appointment.getClient().getId().equals(userId);
             if (!own || newStatus != Status.CANCELADA) {
-                throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", ApiError.FORBIDDEN_MESSAGE);
+                throw forbidden();
             }
             if (appointment.getStatus() != Status.PENDIENTE && appointment.getStatus() != Status.CONFIRMADA) {
                 throw ApiException.conflict("CANNOT_CANCEL", CANNOT_CANCEL);
             }
         }
+        // Cerradura (spec F3): una cita ya cobrada solo la puede cambiar el admin; protege el cobro
+        if (appointment.getStatus() == Status.COMPLETADA && role != Role.ADMIN) {
+            throw forbidden();
+        }
 
         Status previous = appointment.getStatus();
+        if (previous == Status.CANCELADA && newStatus != Status.CANCELADA) {
+            // Reactivar: el turno pudo ser tomado por otra cita mientras estaba cancelada
+            hours.lockById(BusinessHours.SINGLE_ROW_ID);
+            if (appointments.overlaps(appointment.getDate(), appointment.getTime(), appointment.getEndTime(),
+                    appointment.getId())) {
+                throw slotTaken();
+            }
+        }
         appointment.changeStatus(newStatus, Instant.now(clock));
         if (previous == Status.CANCELADA && newStatus != Status.CANCELADA) {
             try {
-                appointments.flush(); // reactivar puede chocar con quien tomó el turno
+                appointments.flush(); // segunda barrera: el UNIQUE del turno activo
             } catch (DataIntegrityViolationException ex) {
                 throw slotTaken();
             }
@@ -164,30 +183,43 @@ public class AppointmentService {
         return value == null ? BigDecimal.ZERO : value.setScale(0, RoundingMode.HALF_UP);
     }
 
-    /** ¿La hora es uno de los turnos que ofrece el horario de atención ese día? */
-    private boolean isOfferedSlot(LocalDate date, LocalTime time) {
-        BusinessHours h = hours.findById(BusinessHours.SINGLE_ROW_ID).orElse(null);
-        if (h == null) {
-            return false;
-        }
+    @Transactional(readOnly = true)
+    public List<BookedRange> bookedRanges(LocalDate date) {
+        return appointments.findBookedRanges(date).stream()
+            .map(row -> new BookedRange(AppointmentDtos.format((LocalTime) row[0]),
+                AppointmentDtos.format((LocalTime) row[1])))
+            .toList();
+    }
+
+    /**
+     * Fin de la cita si el rango [time, time + duración) cabe en el horario de ese día: día abierto,
+     * inicio alineado con los turnos, termina a más tardar al cierre y no cruza el descanso.
+     * Devuelve null si no cabe (contrato §9).
+     */
+    static LocalTime rangeEnd(BusinessHours h, LocalDate date, LocalTime time, int durationMinutes) {
         int weekday = date.getDayOfWeek().getValue() % 7; // 0 = domingo … 6 = sábado
         if (!h.getOpenDays().contains(weekday)) {
-            return false;
+            return null;
         }
-        int t = time.toSecondOfDay() / 60;
+        int start = time.toSecondOfDay() / 60;
+        int end = start + durationMinutes;
         int open = h.getOpenTime().toSecondOfDay() / 60;
         int close = h.getCloseTime().toSecondOfDay() / 60;
-        if (t < open || t >= close || (t - open) % h.getSlotMinutes() != 0) {
-            return false;
+        if (start < open || end > close || (start - open) % h.getSlotMinutes() != 0) {
+            return null;
         }
         if (h.getBreakStart() != null && h.getBreakEnd() != null) {
             int bs = h.getBreakStart().toSecondOfDay() / 60;
             int be = h.getBreakEnd().toSecondOfDay() / 60;
-            if (t >= bs && t < be) {
-                return false;
+            if (start < be && end > bs) {
+                return null;
             }
         }
-        return true;
+        return LocalTime.ofSecondOfDay(end * 60L); // end <= close < 24 h: nunca da la vuelta
+    }
+
+    private static ApiException forbidden() {
+        return new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", ApiError.FORBIDDEN_MESSAGE);
     }
 
     private static ApiException slotTaken() {

@@ -80,8 +80,8 @@ class EsquemaMigracionTest {
     }
 
     private void crearCita(String cliente, String servicio, String estado) {
-        jdbc.update("INSERT INTO appointments (id, client_id, service_id, date, time, status) "
-                + "VALUES (?, ?, ?, '2030-01-15', '10:00:00', ?)",
+        jdbc.update("INSERT INTO appointments (id, client_id, service_id, date, time, end_time, status) "
+                + "VALUES (?, ?, ?, '2030-01-15', '10:00:00', '10:40:00', ?)",
             UUID.randomUUID().toString(), cliente, servicio, estado);
     }
 }

@@ -6,8 +6,8 @@
 - **Front:** Next.js `16.3.8` (App Router) + React `19.2.8` + TypeScript `5` + Tailwind CSS `v4` (`@tailwindcss/postcss`)
 - **Back (principal):** API REST en **Spring Boot 4.2 + Java 21 + MySQL + Flyway + Spring Security (JWT)** en `backend/`. Contrato: `@docs/contratos/api-rest.md`. Next.js la llama desde el servidor mediante `lib/api/` cuando está definida `API_URL` (tarea 4.9).
 - **Capa de servidor del front:** Server Actions (`lib/actions.ts`), consultas (`lib/data/queries.ts`) y Route Handlers (`app/api/`). Cada una elige el modo en este orden: API Spring Boot → Supabase → store en memoria (`lib/data/store.ts`).
-- **Supabase (solo producción actual):** el sitio de Vercel usa el proyecto "Barberia JM", con el esquema aplicado por migraciones MCP (`supabase/schema.sql`), hasta que la API se publique en la nube (U6). Se retira en la tarea 4.11.
-- **Despliegue:** Vercel (front). La API Spring Boot corre en local (`http://localhost:8080`) y quedó lista para desplegarse en **Render** (Docker, `backend/Dockerfile` + `render.yaml`, guía en `@docs/operacion/despliegue-render.md`) o AWS/Railway sin cambiar código.
+- **Supabase (legado, pendiente de retiro en 4.11):** quedó reemplazado en producción por Spring Boot en Render + TiDB Cloud desde el 2026-11-21 al configurarse `API_URL` en Vercel.
+- **Despliegue:** Frontend en **Vercel** (`https://jm-barber-studio-delta.vercel.app`, con `API_URL=https://jm-barber-api.onrender.com`), Backend Spring Boot en **Render** (`https://jm-barber-api.onrender.com`, Docker Free, Blueprint `render.yaml`) y MySQL en **TiDB Cloud Starter** (`jm_barber`, AWS `us-east-1`, $0/mes). Guía: `@docs/operacion/despliegue-render.md`.
 
 ## Documentación (léela antes de cualquier cambio)
 - Qué es el producto, usuarios y qué NO entra: `@docs/producto.md`

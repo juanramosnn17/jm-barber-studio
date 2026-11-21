@@ -1,6 +1,11 @@
 # Despliegue del Backend Spring Boot en Render · JM Barber Studio
 
 > Guía operativa (tarea `4.15`) para publicar `backend/` (Spring Boot 4.2 + Java 21) en **Render (plan Free)** y conectarlo al frontend en **Vercel**, manteniendo total compatibilidad con el flujo de trabajo en local y las migraciones Flyway (`V1`, `V2`, `V3`).
+>
+> **Estado en producción (2026-11-21):**
+> - **Backend Spring Boot (Render Free):** `https://jm-barber-api.onrender.com` (Blueprint `jm-barber-studio`, servicio `jm-barber-api`, despliegue continuo desde `main`)
+> - **Base de datos (TiDB Cloud Starter, $0/mes):** clúster `jm-barber` (AWS `us-east-1`, TiDB v8.5.3 MySQL compatible, Flyway `V1`–`V3` aplicadas)
+> - **Frontend (Vercel):** `https://jm-barber-studio-delta.vercel.app` con `API_URL=https://jm-barber-api.onrender.com` (Production y Preview)
 
 ---
 

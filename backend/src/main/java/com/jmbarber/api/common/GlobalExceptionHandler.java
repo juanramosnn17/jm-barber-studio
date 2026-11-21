@@ -6,6 +6,8 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -31,6 +33,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleUnreadable(HttpMessageNotReadableException ex) {
         return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "El cuerpo de la petición no es válido.");
+    }
+
+    /** Parámetro de consulta ausente o con formato inválido (ej. ?date=ayer). */
+    @ExceptionHandler({MissingServletRequestParameterException.class, MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<ApiError> handleBadParam(Exception ex) {
+        return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Revisa los parámetros de la petición.");
     }
 
     /** @PreAuthorize rechazado: el usuario tiene sesión pero no el rol. */

@@ -58,12 +58,27 @@ Horas en formato `"HH:mm"`; días de 0 (domingo) a 6 (sábado), al menos uno; `s
 |---|---|---|---|---|
 | `GET /appointments/booked-slots?date=` | — | `string[]` horas ocupadas, sin datos personales | con sesión | — |
 | `POST /appointments` | `{ serviceId, date, time, notes? }` | `201 Appointment` (estado `CONFIRMADA`, a nombre del usuario) | con sesión | 400 `"No puedes reservar en una fecha u hora que ya pasó."` · 409 `SLOT_TAKEN` |
-| `GET /appointments/next` | — | `Appointment` o `204` | CLIENTE (las suyas) |
+| `GET /appointments/next` | — | `Appointment` o `204` | con sesión (las propias) |
 | `GET /appointments?date=` | — | `Appointment[]` del día por hora | ADMIN, BARBERO |
 | `PATCH /appointments/{id}/status` | `{ status }` | `200 Appointment`. Al pasar a `COMPLETADA` fija pago en efectivo y la **reserva** del servicio | ADMIN, BARBERO (cualquier estado) · CLIENTE (solo `CANCELADA` en las suyas) | 403 |
 | `PATCH /appointments/{id}/payment` | `{ paymentMethod, discountAmount, refundAmount, tipAmount }` | `200` | ADMIN | 400 `"El descuento y el reembolso no pueden superar el valor del servicio."` · 409 `"Solo se puede ajustar el pago de una cita completada."` |
 
 `Appointment = { id, clientId, clientName, serviceId, serviceName, durationLabel, date, time, status, notes, paymentStatus, paymentMethod }`. Para BARBERO, `clientName` es solo nombre y apellido; nunca correo ni teléfono.
+
+Detalles (tarea 4.5):
+- `POST /appointments` exige `serviceId`, `date` (`YYYY-MM-DD`) y `time` (`HH:mm`). Responde:
+  - 404 si el servicio no existe y 400 `"Este servicio no está disponible."` si está inactivo;
+  - 400 `"Ese horario no está disponible. Elige un turno de la lista."` si el día está cerrado o la hora no coincide con un turno del horario de atención (fuera de horario, en el descanso o desalineada con `slotMinutes`);
+  - 400 por el pasado y 409 `SLOT_TAKEN` como dice la tabla. El índice `UNIQUE` también cubre dos reservas simultáneas.
+- `GET /appointments/next` sirve para cualquier usuario con sesión y devuelve **su** próxima cita `PENDIENTE` o `CONFIRMADA` que aún no haya pasado.
+- `GET /appointments?date=` (agenda) no incluye las canceladas.
+- `PATCH /appointments/{id}/status` acepta `{ status }` entre `PENDIENTE`, `CONFIRMADA`, `EN_CURSO`, `COMPLETADA` y `CANCELADA`.
+  - **Cliente:** solo puede pasar a `CANCELADA` una cita suya. Si es ajena → 403; si ya está completada, cancelada o en curso → 409 `"Esta cita ya no se puede cancelar."`.
+  - **Al completar:** `paymentStatus = PAGADO`, `paymentMethod = EFECTIVO`, `grossAmount` = precio del servicio, `reserveAmount` = reserva del servicio en ese momento, `paidAt` = ahora.
+  - **Al cancelar:** `paymentStatus = ANULADO`.
+  - **Si una cita completada vuelve a otro estado activo:** se borran el cobro y la reserva (`paymentStatus = PENDIENTE`).
+  - **Si una cita cancelada se reactiva en un turno que ya tomó otra persona:** 409 `SLOT_TAKEN`.
+  - Id inexistente → 404.
 
 **Regla de negocio (F2):** una sola cita no cancelada por `(date, time)`. MySQL no tiene índices parciales, así que se usa una columna generada `active_slot` (vale `date+time` si no está cancelada y `NULL` si lo está) con índice `UNIQUE`; MySQL permite varios `NULL`.
 

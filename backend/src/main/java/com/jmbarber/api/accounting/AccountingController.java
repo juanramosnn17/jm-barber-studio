@@ -23,9 +23,18 @@ import com.jmbarber.api.accounting.AccountingDtos.ReportResponse;
 public class AccountingController {
 
     private final AccountingService service;
+    private final CashClosingService cashClosing;
 
-    public AccountingController(AccountingService service) {
+    public AccountingController(AccountingService service, CashClosingService cashClosing) {
         this.service = service;
+        this.cashClosing = cashClosing;
+    }
+
+    /** Cierre de caja del día (tarea 3.31). Sin fecha, es el de hoy en Colombia. */
+    @GetMapping("/cash-closing")
+    public ResponseEntity<CashClosingService.CashClosing> cashClosing(
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(cashClosing.close(date));
     }
 
     @GetMapping("/report")

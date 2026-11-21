@@ -156,6 +156,17 @@ Categorías: `ARRIENDO`, `SERVICIOS_PUBLICOS`, `NOMINA_ADMINISTRATIVA`, `INSUMOS
 |---|---|---|---|
 | `GET /accounting/report` | `period=today\|this_week\|this_month\|last_month\|custom`, `startDate`, `endDate`, `page`, `size` | `{ period, summary: { income, productSales, yourProfit, businessReserve, expenses, reserveBalance, servicesCount, averageTicket, tips }, transactions: { rows, total, page, totalPages } }` | ADMIN |
 | `GET /accounting/report.csv` | mismos | archivo `.csv` (celdas saneadas contra fórmulas `= + - @`) | ADMIN |
+| `GET /accounting/cash-closing?date=` | `date` (`YYYY-MM-DD`; por defecto, hoy en Colombia) | `{ date, methods: [{ paymentMethod, income, tips, expenses, balance }], totals: { income, tips, expenses }, expectedCash }` | ADMIN |
+
+**Cierre de caja (tarea 3.31):**
+- `methods` siempre trae los 4 métodos en este orden: `EFECTIVO`, `NEQUI_DAVIPLATA`, `TRANSFERENCIA` y `TARJETA`, aunque alguno esté en 0.
+- Por cada método, en el día indicado:
+  - `income` = neto de las citas cobradas (mismas reglas del reporte) + ventas de productos `REGISTRADO`;
+  - `tips` = propinas de esas citas;
+  - `expenses` = gastos `REGISTRADO`;
+  - `balance` = `income` + `tips` − `expenses`.
+- `expectedCash` es el `balance` de `EFECTIVO`: el efectivo que debe haber en caja. Si es negativo, se pagó en efectivo más de lo cobrado.
+- Las ventas y los gastos anulados no cuentan. Una fecha inválida → 400.
 
 Fórmulas (spec F5): ingresos = Σ(precio − descuento − reembolso) de citas cobradas (+ ventas de productos, 3.30); reserva = Σ reserva fijada en cada cita; tu ganancia = ingresos − reserva; saldo = reserva − gastos registrados. Las propinas van aparte.
 

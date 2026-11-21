@@ -75,9 +75,7 @@ public class AccountingService {
         List<TransactionRow> rows = new ArrayList<>();
 
         for (Appointment a : appointments.findCollectedBetween(period.startDate(), period.endDate())) {
-            BigDecimal grossValue = a.getGrossAmount() != null ? a.getGrossAmount() : a.getService().getPrice();
-            long gross = pesos(grossValue);
-            long net = gross - pesos(a.getDiscountAmount()) - pesos(a.getRefundAmount());
+            long net = netOf(a);
             long tip = pesos(a.getTipAmount());
 
             long appointmentReserve = 0;
@@ -129,7 +127,13 @@ public class AccountingService {
         return new FullReport(period, summary, rows);
     }
 
-    private static long pesos(BigDecimal value) {
+    /** Lo cobrado por una cita: valor cobrado (o precio del servicio) − descuento − reembolso. */
+    static long netOf(Appointment a) {
+        BigDecimal gross = a.getGrossAmount() != null ? a.getGrossAmount() : a.getService().getPrice();
+        return pesos(gross) - pesos(a.getDiscountAmount()) - pesos(a.getRefundAmount());
+    }
+
+    static long pesos(BigDecimal value) {
         return value == null ? 0 : value.setScale(0, RoundingMode.HALF_UP).longValue();
     }
 }

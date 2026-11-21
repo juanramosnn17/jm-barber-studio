@@ -57,7 +57,7 @@
 - [x] 3.28 Simplificar pantallas de contabilidad: 5 tarjetas, sin "barbero" ni márgenes %, periodos reducidos y tabla de 6 columnas con fila clicable. Verificado por el estudiante en producción (y ajustado a su pedido: sin encabezado, sin perfil en el menú, movimientos solo con dinero real).
 - [ ] 3.29 Categoría "Compra de insumos / productos" en gastos y propinas por cita (aparte de los ingresos).
 - [ ] 3.30 Venta de productos: nueva tabla `product_sales` con registrar, anular y eliminar; suma a Ingresos. *(Backend Spring Boot listo y probado el 2026-11-20: migración V2, `/product-sales` y reporte. Falta la pantalla, en la 4.9, y verificarla en el navegador, en la 4.10.)*
-- [ ] 3.31 Cierre de caja del día por método de pago y efectivo esperado en caja.
+- [ ] 3.31 Cierre de caja del día por método de pago y efectivo esperado en caja. *(Backend Spring Boot listo y probado el 2026-11-20: `GET /accounting/cash-closing`. Falta la pantalla, en la 4.9, y verificarla en el navegador, en la 4.10.)*
 
 ## Back · Spring Boot + MySQL (Unidad 4)
 > El curso exige el backend en **Spring Boot**. Reemplaza a Supabase con las mismas reglas (specs F1–F5). Contrato: `docs/contratos/api-rest.md`. Código en `backend/`. Una tarea a la vez: cada una se prueba (pruebas automáticas + navegador/Postman) antes de pasar a la siguiente.

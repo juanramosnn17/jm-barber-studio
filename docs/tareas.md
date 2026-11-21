@@ -75,11 +75,17 @@
 - [ ] 4.11 Retirar Supabase del frontend (dependencias, variables y archivos `lib/supabase/*`) cuando 4.10 esté completa. El despliegue del backend en AWS queda para la Unidad 6.
 - [ ] 4.12 Alineación con `docs/datos/modelo.md` (migración Flyway `V3`). `PUT /services/{id}` ya se hizo en la 4.9. Falta: columna `appointments.end_time` con validación de no solapamiento y `GET /appointments/booked-ranges`, `ON DELETE SET NULL` en `appointments.client_id` (cancelando citas futuras al borrar usuario) y bloqueo `403` para que `BARBERO` no modifique citas `COMPLETADA`. Ver `docs/contratos/api-rest.md` §9.
 
-## Back (U4) · Plan de instalaciones (Supabase + Next.js)
-> Orden: configuración → inicio de sesión → lecturas públicas → escrituras → auditoría.
+## Back (U4) · Plan de instalaciones (Supabase + Next.js) · **REEMPLAZADO**
+> **Reemplazado el 2026-11-21:** el estudiante eligió Spring Boot + MySQL como backend de la U4 (ver `docs/decisiones.md`). Estas tareas se conservan como registro de lo que propuso Antigravity, pero **no se ejecutan**. Su contenido útil pasa a las tareas Spring Boot:
+> - T-B4 (editar servicios) → hecha en la 4.9 (`PUT /services/{id}` + pantalla).
+> - T-B5/T-B6/T-B7/T-B8 (duración real, cerradura del barbero, borrado seguro) → tarea 4.12.
+> - T-B9/T-B10 → ya cubiertas por la 4.7, la 3.29, la 3.30 y la 3.31 en Spring Boot.
+> - **Corrección sobre T-B1:** figuraba como hecha, pero la migración `20261120000000_esquema_mvp.sql` **nunca se aplicó** al proyecto Supabase (verificado con `list_migrations` el 2026-11-21). Lo que sí quedó hecho fue la zona horaria del dashboard y el soporte de la *publishable key*.
+>
+> Orden original: configuración → inicio de sesión → lecturas públicas → escrituras → auditoría.
 > Cada tarea corresponde a una operación del contrato (`docs/contratos/api.md`) o pieza transversal, aplica la skill `backend-seguro` y cabe en un commit.
 
-- [x] **T-B1 · Configuración, migración y zona horaria (transversal)**
+- [ ] **T-B1 · Configuración, migración y zona horaria (transversal)** *(parcial: la migración no se aplicó; ver la nota de arriba)*
   - **Archivos:** `supabase/migrations/20261120000000_esquema_mvp.sql`, `supabase/seed.sql`, `.env.local.example`, `app/admin/page.tsx`
   - **Criterio:** RLS activo en las 6 tablas, sin `service_role` con `NEXT_PUBLIC_`, y fecha del dashboard admin calculada en `America/Bogota` (`nowInStudio()`).
   - **Verificación:** ejecutar `supabase/seed.sql` en el SQL Editor, comprobar `rowsecurity = true` en las 6 tablas, verificar Security Advisors sin alertas críticas y revisar `grep` de secretos.

@@ -3,6 +3,14 @@
 > Diseño del modelo de datos del MVP para **Supabase (PostgreSQL + Auth + RLS)**, alineado con `docs/producto.md`, `docs/arquitectura.md` y las especificaciones `docs/specs/F1..F5`.
 > Convenciones: moneda en pesos colombianos sin decimales (**COP**, enteros `integer`), zona horaria del estudio **`America/Bogota`**, barbería operada por **un solo barbero** en el MVP.
 
+> **Implementación vigente (2026-11-21): Spring Boot + MySQL** (`backend/`, migraciones Flyway). El modelo, las reglas de negocio y los dueños de cada fila son los de este documento. Lo que cambia es cómo se garantizan:
+> - `auth.users` + `profiles` → una sola tabla `users` (contraseña con BCrypt, rol en un `ENUM`);
+> - `uuid` → `CHAR(36)`; los montos se guardan en `DECIMAL(10,2)` y la API los expone como pesos enteros;
+> - las **políticas RLS** → Spring Security (rol por endpoint) + validación de dueño en la capa `Service`;
+> - el `EXCLUDE` sobre rangos → validación de no solapamiento en `AppointmentService` (MySQL no tiene restricciones de exclusión), además del `UNIQUE` sobre el turno activo.
+>
+> Los cambios de esta versión del modelo que aún faltan en MySQL (`end_time`, `ON DELETE SET NULL`, cerradura del barbero) son la tarea 4.12. El SQL de Supabase de `supabase/migrations/` es un diseño de referencia **no aplicado**.
+
 ---
 
 ## 1. Diagrama Entidad–Relación (ER)

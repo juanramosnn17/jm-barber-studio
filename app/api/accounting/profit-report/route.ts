@@ -16,7 +16,7 @@ import {
 } from "@/lib/accounting/profit-report.service";
 import { isApiConfigured } from "@/lib/api/config";
 import { API_UNAVAILABLE_MESSAGE, apiDownload } from "@/lib/api/client";
-import { buildReportQuery } from "@/lib/api/accounting";
+import { buildReportQuery, getApiProfitReport } from "@/lib/api/accounting";
 
 function extractQueryFilters(request: NextRequest): Record<string, unknown> {
   const sp = request.nextUrl.searchParams;
@@ -35,6 +35,40 @@ function extractQueryFilters(request: NextRequest): Record<string, unknown> {
     sortBy: sp.get("sortBy") ?? undefined,
     sortOrder: sp.get("sortOrder") ?? undefined,
   };
+}
+
+/** Código HTTP para cada error del reporte que viene de la API. */
+const API_ERROR_STATUS: Record<string, number> = {
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  INVALID_FILTER: 400,
+  INVALID_DATE_RANGE: 400,
+  DATE_RANGE_TOO_LARGE: 400,
+};
+
+/**
+ * Con la API Spring Boot, el JSON también sale de GET /accounting/report: nunca se lee
+ * Supabase cuando existe API_URL (tarea 4.14, auditoría #9). La API valida el rol ADMIN.
+ */
+async function apiJsonReport(filters: Record<string, unknown>) {
+  const text = (v: unknown) => (typeof v === "string" || typeof v === "number" ? String(v) : undefined);
+  const result = await getApiProfitReport(
+    buildReportQuery({
+      quickPeriod: text(filters.quickPeriod),
+      startDate: text(filters.startDate),
+      endDate: text(filters.endDate),
+      page: text(filters.page),
+      pageSize: text(filters.pageSize),
+    })
+  );
+  const headers = { "Cache-Control": "no-store, max-age=0" };
+  if (!result.success) {
+    return NextResponse.json(
+      { success: false, error: result.error },
+      { status: API_ERROR_STATUS[result.error.code] ?? 503, headers }
+    );
+  }
+  return NextResponse.json({ success: true, data: result.data }, { status: 200, headers });
 }
 
 export async function GET(request: NextRequest) {
@@ -71,6 +105,10 @@ export async function GET(request: NextRequest) {
   }
 
   const rawFilters = extractQueryFilters(request);
+
+  if (isApiConfigured()) {
+    return apiJsonReport(rawFilters);
+  }
 
   if (format === "csv") {
     const csvResult = await exportServerProfitReportCsv(rawFilters);
@@ -138,6 +176,10 @@ export async function POST(request: NextRequest) {
       },
       { status: 400 }
     );
+  }
+
+  if (isApiConfigured()) {
+    return apiJsonReport(body);
   }
 
   const result = await getServerProfitReport(body);

@@ -38,7 +38,8 @@ public final class ServiceDtos {
         @Min(value = 5, message = "La duración debe ser de al menos 5 minutos.")
         @Max(value = 480, message = "La duración no puede superar 8 horas.") Integer durationMinutes,
         @Size(max = 60) String icon,
-        @Size(max = 255) String imageUrl
+        @Size(max = 255) String imageUrl,
+        @DecimalMin(value = "0", message = "La reserva debe ser un monto igual o mayor a cero.") BigDecimal reserveAmount
     ) {
     }
 

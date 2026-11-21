@@ -8,7 +8,7 @@ Como administrador o barbero del estudio, quiero visualizar todas las citas del 
 ## Comportamiento
 1. En `/admin`, el panel muestra en la parte superior 4 tarjetas KPI del día actual: **Citas Totales**, **Confirmadas**, **Pendientes** y **Completadas**.
 2. Debajo, el componente `DailyAppointmentsList` lista las citas de la jornada ordenadas cronológicamente por hora (`HH:MM`), permitiendo filtrarlas por estado (`Todas`, `Confirmadas`, `Pendientes`, `Completadas`). No hay buscador: con un solo barbero la agenda del día es corta.
-3. Cada cita dispone de acciones rápidas para cambiar su estado (`updateAppointmentStatusAction`): aprobar (`confirmada`), marcar como terminada (`completada`) o rechazar/anular (`cancelada`). Al marcarse como `completada`, el sistema registra automáticamente su pago en efectivo (`payment_status = 'pagado'`) para el reporte contable.
+3. Cada cita dispone de acciones rápidas para cambiar su estado (`updateAppointmentStatusAction`): aprobar (`confirmada`), marcar como terminada (`completada`) o rechazar/anular (`cancelada`). Una cita `pendiente` muestra "Aprobar" y "Rechazar"; una `confirmada` muestra "Completar" y "Cancelar", que pide confirmación y libera el turno (tarea 4.14). Al marcarse como `completada`, el sistema registra automáticamente su pago en efectivo (`payment_status = 'pagado'`) para el reporte contable.
 
 ## Criterios de aceptación
 - [ ] En `/admin` se muestran los 4 contadores superiores (Citas Totales, Confirmadas, Pendientes y Completadas) coincidiendo exactamente con las citas listadas en la jornada.
@@ -26,7 +26,7 @@ Como administrador o barbero del estudio, quiero visualizar todas las citas del 
 - [ ] **Dado** una cita `confirmada`, **cuando** un `admin` o `barbero` llama a `PATCH /api/appointments/:id/status` con `{ "status": "completada" }`, **entonces** responde `200`, congela `gross_amount` y `reserve_amount` del servicio en ese momento y fija `payment_status = "pagado"` y `payment_method = "efectivo"`.
 - [ ] **Dado** una cita ya `completada`, **cuando** un `barbero` intenta cambiar su estado vía `PATCH /api/appointments/:id/status`, **entonces** responde `403` y el cobro no se altera (solo el `admin` puede revertir una cita completada).
 - [ ] **Dado** una cita `cancelada` cuyo rango horario ya fue tomado por otro cliente, **cuando** el `admin` intenta reactivarla a `confirmada`, **entonces** responde `409` con `"Este bloque horario ya está ocupado. Por favor elige otro turno."`.
-- [ ] **Dado** un `cliente` A autenticado, **cuando** intenta cancelar una cita perteneciente al cliente B (o intenta marcar una cita propia como `completada`), **entonces** responde `404` (si es ajena por RLS) o `403` (si pide un estado distinto de `cancelada`), sin modificar la cita.
+- [ ] **Dado** un `cliente` A autenticado, **cuando** intenta cancelar una cita perteneciente al cliente B (o intenta marcar una cita propia como `completada`), **entonces** responde `403` (si es ajena; con Supabase era `404` por RLS) o `403` (si pide un estado distinto de `cancelada`), sin modificar la cita.
 
 ## Fuera de alcance
 - Reprogramación arrastrando y soltando (drag & drop) en calendario semanal.

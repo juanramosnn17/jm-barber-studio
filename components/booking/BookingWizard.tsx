@@ -474,6 +474,16 @@ export default function BookingWizard({
                 <span className="font-body-sm text-on-surface-variant">Hora de reserva</span>
                 <span className="font-title-md text-on-surface">{selectedSlot || "Sin horario"}</span>
               </div>
+              {/* Duración del servicio y hora en que termina (spec F2, tarea 4.14) */}
+              <div className="flex justify-between items-center py-2 border-b border-surface-variant/40">
+                <span className="font-body-sm text-on-surface-variant">Duración</span>
+                <span className="font-title-md text-on-surface text-right">
+                  {selectedService ? `${selectedService.duration_minutes} min` : "—"}
+                  {selectedService && selectedSlot
+                    ? ` · hasta ${minutesToTime(timeToMinutes(selectedSlot) + selectedService.duration_minutes)}`
+                    : ""}
+                </span>
+              </div>
               <div className="flex justify-between items-center py-3 bg-surface-container-low px-space-md rounded-xl mt-space-xs">
                 <span className="font-title-md text-on-surface font-semibold">Total estimado</span>
                 <span className="font-headline-sm text-secondary font-bold">

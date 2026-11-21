@@ -72,7 +72,7 @@
 - [x] 4.8 Contabilidad: reporte con el modelo de reserva (Ingresos · Tu ganancia · Reserva · Gastos · Saldo) y exportación CSV saneada.
 - [x] 4.9 Conectar Next.js: cliente HTTP en `lib/api/`, las Server Actions y consultas llaman a la API, token JWT en cookie `httpOnly`, y `proxy.ts` valida la sesión con `GET /auth/me`. El modo demo (store en memoria) se mantiene cuando `API_URL` no está definida.
 - [x] 4.10 Verificar en el navegador todos los criterios de F1–F5 contra el backend Spring Boot y registrar el resultado en `docs/verificacion-springboot.md`. *(Hecha el 2026-11-21: 43 de 43 criterios del back en vivo y recorrido de pantallas como barbero, cliente y admin. Quedaron 2 fallas y 2 menores, que pasan a la 4.14.)*
-- [ ] 4.14 Correcciones encontradas en la 4.10 (ver `docs/verificacion-springboot.md`):
+- [x] 4.14 Correcciones encontradas en la 4.10 (ver `docs/verificacion-springboot.md`). *(Hecha y verificada el 2026-11-21: 86 de 86 pruebas JUnit, `tsc` y `eslint` en 0 errores; en vivo contra `:8080` y `:3000`: `POST /services` guarda `reserveAmount` y rechaza `> price`, `/api/accounting/profit-report` en GET/POST JSON devuelve datos reales de MySQL y responde 401/403, cancelar cita `confirmada` libera el turno en `booked-ranges`, y el resumen de reserva muestra duración y hora de fin.)*
   - agenda: botón para cancelar citas `confirmada` (F3-UI3);
   - `/api/accounting/profit-report` en JSON a través de la API cuando `API_URL` está activa (auditoría #9);
   - la reserva escrita al crear un servicio se guarda (F4-UI5);

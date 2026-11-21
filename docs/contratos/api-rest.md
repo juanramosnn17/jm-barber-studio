@@ -32,14 +32,14 @@
 | Método y ruta | Cuerpo / parámetros | Respuesta | Rol |
 |---|---|---|---|
 | `GET /services?onlyActive=true` | — | `Service[]` por `sortOrder` | público (activos) · ADMIN (todos) |
-| `POST /services` | `{ name, shortName, description, includes?, price, durationLabel, durationMinutes, icon, imageUrl? }` | `201 Service` | ADMIN |
+| `POST /services` | `{ name, shortName, description, includes?, price, durationLabel, durationMinutes, icon, imageUrl?, reserveAmount? }` | `201 Service` | ADMIN |
 | `PATCH /services/{id}/active` | — | `200 Service` (invierte `isActive`) | ADMIN |
 | `PATCH /services/{id}/reserve` | `{ reserveAmount }` (0 ≤ monto ≤ precio) | `200 Service` | ADMIN |
 
 `Service = { id, name, shortName, description, includes, price, durationLabel, durationMinutes, imageUrl, icon, isActive, sortOrder, reserveAmount }`.
 
 - `GET` sin token o con rol distinto de ADMIN devuelve solo los activos; el ADMIN recibe todos salvo que envíe `onlyActive=true`.
-- En `POST` solo `name` y `price` (≥ 1) son obligatorios. Si faltan → 400 "Nombre y precio son obligatorios.". Valores por defecto: `shortName` y `description` = `name`, `durationMinutes` = 30, `durationLabel` = "`{durationMinutes} min`", `icon` = `content_cut`. El servicio nuevo queda activo, al final del orden y con reserva 0.
+- En `POST` solo `name` y `price` (≥ 1) son obligatorios. Si faltan → 400 "Nombre y precio son obligatorios.". Valores por defecto: `shortName` y `description` = `name`, `durationMinutes` = 30, `durationLabel` = "`{durationMinutes} min`", `icon` = `content_cut`. El servicio nuevo queda activo y al final del orden. `reserveAmount` es opcional (por defecto 0) y debe cumplir `0 ≤ reserveAmount ≤ price`; si no, 400 con el mensaje de la reserva (tarea 4.14).
 - `reserve` mayor que el precio → 400 "La reserva no puede superar el precio del servicio."; id inexistente → 404 `NOT_FOUND`.
 - **`PUT /services/{id}` (solo ADMIN, implementado en la 4.9):**
   - recibe los mismos campos que `POST` más `reserveAmount` (opcional, por defecto 0) y reemplaza el servicio completo;
@@ -219,7 +219,7 @@ Detalles (tarea 4.8, mismas reglas que el motor actual `lib/accounting/`):
   - cerrar sesión borra la cookie;
   - `proxy.ts` valida la sesión con `GET /auth/me` en cada página: si la API responde 401, borra la cookie y trata al visitante como sin sesión;
   - las reglas de rutas por rol no cambian.
-- **Contabilidad:** la página pide `GET /accounting/report` y lo adapta al formato de sus componentes, sin recalcular nada en el frontend. El CSV de `/api/accounting/profit-report?format=csv` se reenvía desde `GET /accounting/report.csv`.
+- **Contabilidad:** la página pide `GET /accounting/report` y lo adapta al formato de sus componentes, sin recalcular nada en el frontend. En modo API, el Route Handler `/api/accounting/profit-report` también usa la API: el JSON (`GET` y `POST`) devuelve el reporte adaptado, y el CSV se reenvía desde `GET /accounting/report.csv`. Nunca lee Supabase cuando existe `API_URL` (tarea 4.14, auditoría #9).
 - **Funciones que solo existen en Spring Boot** (decisión del 2026-11-20): la propina al ajustar un pago (3.29), la categoría "Compra de insumos / productos" (3.29), las ventas de productos (3.30) y el cierre de caja (3.31). Solo se muestran en modo API.
 - **Seguridad del frontend (tarea 4.13, auditoría hallazgos 3 y 7):**
   - `lib/data/queries.ts` es `server-only`: sus lecturas solo se llaman desde páginas y acciones del servidor, nunca como acción desde el navegador;

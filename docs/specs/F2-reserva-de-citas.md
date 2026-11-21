@@ -34,8 +34,8 @@ Dos citas no canceladas en la misma fecha **nunca pueden solaparse** en su rango
 - [ ] **Dado** que ya existe una cita activa de `09:00` a `10:00`, **cuando** otro cliente intenta reservar un servicio de `30 min` a las `09:30` en la misma fecha, **entonces** responde `409` con `"Este bloque horario ya está ocupado. Por favor elige otro turno."` y no se crea nada.
 - [ ] **Dado** que la pausa de almuerzo es de `14:00` a `15:00`, **cuando** un cliente intenta reservar un servicio de `60 min` a las `13:30`, **entonces** responde `400` con `"Ese horario no está disponible. Elige un turno de la lista."` (mientras que un servicio de `30 min` a las `13:30` sí responde `201`).
 - [ ] **Dado** un visitante sin sesión, **cuando** llama a `POST /api/appointments` o `GET /api/appointments/mine`, **entonces** responde `401`.
-- [ ] **Dado** un cliente con sesión, **cuando** intenta reservar en una fecha u hora que ya pasó (hora `America/Bogota`) o con un servicio inactivo, **entonces** responde `400` (pasado) o `404` (servicio no disponible) sin crear la cita.
-- [ ] **Dado** un cliente A con sesión, **cuando** intenta cancelar una cita perteneciente al cliente B mediante `PATCH /api/appointments/:id/status`, **entonces** responde `404` y la cita de B permanece activa.
+- [ ] **Dado** un cliente con sesión, **cuando** intenta reservar en una fecha u hora que ya pasó (hora `America/Bogota`) o con un servicio inactivo, **entonces** responde `400` (pasado, con `"No puedes reservar en una fecha u hora que ya pasó."`), `400` (servicio inactivo, con `"Este servicio no está disponible."`) o `404` (servicio inexistente), sin crear la cita. *(Alineado con el contrato Spring Boot en la tarea 4.14.)*
+- [ ] **Dado** un cliente A con sesión, **cuando** intenta cancelar una cita perteneciente al cliente B mediante `PATCH /api/appointments/:id/status`, **entonces** responde `403` con `"No tienes permisos para realizar esta acción."` (con Supabase era `404`, porque RLS oculta la fila) y la cita de B permanece activa. *(Alineado en la tarea 4.14.)*
 
 ## Fuera de alcance
 Pago en línea de la cita o selección manual del barbero por parte del cliente durante la reserva.

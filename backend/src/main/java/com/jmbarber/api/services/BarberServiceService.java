@@ -34,6 +34,10 @@ public class BarberServiceService {
 
     @Transactional
     public ServiceResponse create(CreateServiceRequest req) {
+        BigDecimal reserve = req.reserveAmount() == null ? BigDecimal.ZERO : req.reserveAmount();
+        if (reserve.compareTo(req.price()) > 0) {
+            throw ApiException.badRequest(RESERVE_TOO_HIGH);
+        }
         String name = req.name().trim();
         BarberService service = BarberService.create(
             name,
@@ -46,6 +50,7 @@ public class BarberServiceService {
             orDefault(req.icon(), "content_cut"),
             blankToNull(req.imageUrl()),
             repository.maxSortOrder() + 1);
+        service.setReserveAmount(reserve); // reserva escrita al crear (tarea 4.14)
         return ServiceResponse.from(repository.save(service));
     }
 

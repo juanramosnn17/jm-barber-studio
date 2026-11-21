@@ -130,6 +130,19 @@ class CatalogoYHorarioTest {
     }
 
     @Test
+    void crearServicioConReservaLaGuardaYRechazaUnaMayorAlPrecio() throws Exception {
+        String admin = token(Role.ADMIN);
+        mvc.perform(post("/api/v1/services").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Cejas express\",\"price\":12000,\"reserveAmount\":3000}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.reserveAmount").value(3000));
+        mvc.perform(post("/api/v1/services").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Cejas caras\",\"price\":12000,\"reserveAmount\":12001}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value(BarberServiceService.RESERVE_TOO_HIGH));
+    }
+
+    @Test
     void editarServicioReemplazaSusDatosYValidaLaReserva() throws Exception {
         String admin = token(Role.ADMIN);
         String id = crearServicio(admin, "Corte básico", 20000);

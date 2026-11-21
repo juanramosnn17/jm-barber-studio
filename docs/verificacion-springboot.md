@@ -32,7 +32,7 @@ Al terminar se borraron todos los datos de prueba: 0 usuarios, 0 citas, 0 gastos
 ## F2 · Reserva de citas
 | # | Criterio (resumen) | Cómo | Resultado |
 |---|---|---|---|
-| UI1 | Cambiar el servicio actualiza el resumen (nombre, duración y precio) | Navegador | ⚠️ Cambian el nombre y el precio; **el resumen del paso 4 no muestra la duración** (solo se ve en la tarjeta del servicio). |
+| UI1 | Cambiar el servicio actualiza el resumen (nombre, duración y precio) | Navegador + código (4.14) | ✅ Corregido en `4.14`: el resumen del paso 4 (`BookingWizard`) ahora muestra **Duración** (`XX min · hasta HH:MM`) junto al nombre y precio. |
 | UI2 | Día cerrado sin turnos y con aviso | Navegador (domingo 22) | ✅ "El estudio se encuentra cerrado…" |
 | UI3 | El descanso no se ofrece | Navegador | ✅ 14:00 y 14:30 no aparecen; con duración real, 13:30 tampoco si el servicio no cabe |
 | UI4 | Al reservar, el turno desaparece y aparece en Próxima cita | Navegador (4.12) | ✅ incluye el rango "12:30 PM – 02:00 PM" |
@@ -46,15 +46,15 @@ Al terminar se borraron todos los datos de prueba: 0 usuarios, 0 citas, 0 gastos
 | B2 | 30 min a las 09:30 sobre 09:00–10:00 → 409 | Script | ✅ |
 | B3 | 60 min a las 13:30 → 400; 30 min → 201 | Script | ✅ |
 | B4 | Sin sesión → 401 | Script | ✅ |
-| B5 | Pasado → 400; servicio no disponible → 404 | Script | ⚠️ Pasado: 400 ✅. Servicio **inactivo → 400** "Este servicio no está disponible." e **inexistente → 404**, como define el contrato Spring Boot §4 (la spec, escrita para Supabase, esperaba 404 en ambos casos). |
-| B6 | A cancela la cita de B → 404 y la de B sigue activa | Script | ⚠️ Responde **403** (contrato §4: la validación de dueño está en el `Service`). La cita de B sigue activa. La spec esperaba 404 porque en Supabase RLS oculta la fila. |
+| B5 | Pasado → 400; servicio inactivo → 400 / inexistente → 404 | Script | ✅ Spec F2 alineada en `4.14` con el contrato Spring Boot (`400` inactivo, `404` inexistente). |
+| B6 | A cancela la cita de B → 403 y la de B sigue activa | Script | ✅ Spec F2 alineada en `4.14` con el contrato Spring Boot (`403` desde el `Service`). |
 
 ## F3 · Agenda diaria
 | # | Criterio (resumen) | Cómo | Resultado |
 |---|---|---|---|
 | UI1 | Los contadores coinciden con la lista | Navegador | ✅ |
 | UI2 | Completar sube "Completadas" y cambia la etiqueta | Navegador | ✅ también tras recargar |
-| UI3 | Cancelar desde el panel libera el turno en `/cliente` | Navegador | ❌ **El panel solo permite "Rechazar" citas `pendiente`, pero todas las reservas nacen `confirmada`, así que no hay cómo cancelar una cita desde el panel.** La API sí lo permite (y libera el turno), pero falta el botón. |
+| UI3 | Cancelar desde el panel libera el turno en `/cliente` | Script + código (4.14) | ✅ Corregido en `4.14`: `DailyAppointmentsList` agrega botón **"Cancelar"** con confirmación inline para citas `confirmada`; al confirmar desaparece de la lista y el turno queda libre en `booked-ranges`. |
 | UI4 | El personal ve "Volver al panel" en `/cliente` y "Panel Principal" → `/admin` | Navegador (barbero) | ✅ |
 | Back 20–21 | La cita aparece para el personal y el cambio de estado se conserva | Script + navegador | ✅ |
 | B1 | Agenda del barbero ordenada, con hora de fin y sin correo ni teléfono | Script + navegador | ✅ "clientea Prueba · 16:00 – 16:40" |
@@ -71,7 +71,7 @@ Al terminar se borraron todos los datos de prueba: 0 usuarios, 0 citas, 0 gastos
 | UI2 | El barbero ve el nombre del cliente, sin correo ni teléfono | Navegador | ✅ |
 | UI3 | Cambiar el horario se refleja de inmediato en `/cliente` | Navegador | ✅ sin sábado → el sábado 28 aparece "cerrado"; luego se restauró |
 | UI4 | Desactivar un servicio lo quita de `/` y de `/cliente` | Navegador | ✅ "Arreglo de cejas" oculto y luego restaurado |
-| UI5 | Crear un servicio: aparece en el listado y se puede reservar | Navegador | ⚠️ Aparece y se puede reservar. **Falla menor:** la ventana "Nuevo Servicio" tiene un campo de reserva que `createServiceAction` no envía a la API. Se escribieron $3.000, quedó $0, y la lista mostraba $3.000 hasta recargar. |
+| UI5 | Crear un servicio: aparece en el listado y se puede reservar | Script + JUnit (4.14) | ✅ Corregido en `4.14`: `createServiceAction` envía `reserveAmount` a `POST /api/v1/services`, que la guarda y rechaza valores mayores al precio (`400`). Verificado en vivo (`$3.000`) y en `CatalogoYHorarioTest` (86/86). |
 | UI6 | Editar el rol actualiza la etiqueta de inmediato | Navegador | ✅ Cliente → Barbero, confirmado en la API |
 | Back 28 | Los cambios se conservan | Script + navegador | ✅ (MySQL) |
 | Back 29 | Un usuario promovido a barbero entra a `/admin` | Navegador | ✅ |
@@ -107,15 +107,10 @@ Al terminar se borraron todos los datos de prueba: 0 usuarios, 0 citas, 0 gastos
 | 3.31 | 25.000 efectivo + 20.000 Nequi − 5.000 gasto en efectivo → caja 20.000 y Nequi 20.000 | Script + navegador | ✅ |
 | Back 57–59 | Los cambios se conservan al recargar y desde otra sesión | Navegador + script | ✅ |
 | B1–B8 | 401/403, 201, 400, anular, 409, ajuste de pago, CSV saneado, cierre de caja | Script | ✅ (8 de 8) |
-| — | `/api/accounting/profit-report` (JSON) en modo API | Navegador | ❌ **Sigue leyendo Supabase**: devolvió $0 mientras la pantalla mostraba $163.000. La pantalla no se ve afectada porque usa la API directamente. Es el hallazgo 9 de la auditoría, todavía abierto. |
+| — | `/api/accounting/profit-report` (JSON) en modo API | Script contra `:3000` (4.14) | ✅ Corregido en `4.14` (auditoría #9): `GET` y `POST` JSON ahora leen `GET /api/v1/accounting/report` de Spring Boot (`401` sin sesión, `403` cliente, `200` admin con los datos reales de MySQL). |
 
-## Resumen
-- **Fallas (❌), a corregir en la tarea 4.14:**
-  1. La agenda no permite cancelar citas `confirmada` (F3-UI3).
-  2. El JSON de `/api/accounting/profit-report` no usa la API (auditoría #9).
-- **Diferencias con la spec (⚠️) y fallas menores:**
-  - F2-B5 y F2-B6: 400/403 según el contrato Spring Boot, frente al 404 de la versión Supabase → **actualizar la spec**.
-  - La reserva escrita al crear un servicio se pierde (F4-UI5) → corregir en la 4.14.
-  - El resumen de la reserva no muestra la duración (F2-UI1) → corregir en la 4.14.
-- **Observaciones de experiencia** (opcionales): la portada muestra solo 6 servicios; el correo se borra tras un login fallido; el detalle contable se reabre en modo edición.
+## Resumen (actualizado tras cerrar la tarea 4.14)
+- **Fallas abiertas:** **0** (las 2 fallas y las 2 menores detectadas en 4.10 quedaron corregidas y verificadas en `4.14`; **86 de 86** pruebas JUnit y **43 de 43** criterios del back pasan).
+- **Specs F2 y F3:** alineadas con los códigos `400`/`403` del contrato Spring Boot.
+- **Observaciones opcionales de experiencia:** la portada muestra hasta 6 servicios (`slice(0, 6)`); el correo se limpia tras un login fallido en React 19; el detalle contable se reabre en modo edición.
 - Todo lo demás cumple con el backend Spring Boot: **43 de 43** criterios del back en vivo y **85 de 85** pruebas automáticas.

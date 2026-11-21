@@ -17,6 +17,8 @@ export default function DailyAppointmentsList({
   const [appointments, setAppointments] = useState(initialAppointments);
   const [, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Cita cuya cancelación espera el segundo clic de confirmación (tarea 4.14)
+  const [confirmingCancelId, setConfirmingCancelId] = useState<string | null>(null);
 
   const filteredAppointments = appointments.filter((app) => {
     if (filter === "todas") return true;
@@ -36,8 +38,16 @@ export default function DailyAppointmentsList({
         // Revertir: el cambio no se guardó
         setAppointments(previous);
         setErrorMessage(res.message || "No se pudo actualizar la cita.");
+      } else if (newStatus === "cancelada") {
+        // La agenda no muestra canceladas: la cita sale de la lista y su turno queda libre
+        setAppointments((prev) => prev.filter((a) => a.id !== id));
       }
     });
+  };
+
+  const handleCancelConfirmed = (id: string) => {
+    setConfirmingCancelId(null);
+    handleStatusChange(id, "cancelada");
   };
 
   return (
@@ -169,7 +179,7 @@ export default function DailyAppointmentsList({
                     </span>
                   )}
 
-                  {isConfirmed && (
+                  {isConfirmed && confirmingCancelId !== app.id && (
                     <>
                       <span className="px-3 py-1 rounded-full bg-surface-container-highest text-on-surface font-label-sm tracking-wide font-semibold">
                         Confirmada
@@ -184,7 +194,36 @@ export default function DailyAppointmentsList({
                         </span>
                         <span>Completar</span>
                       </button>
+                      {/* Cancelar una cita confirmada libera su turno (spec F3, tarea 4.14) */}
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingCancelId(app.id)}
+                        aria-label={`Cancelar la cita de ${app.client_name || "este cliente"} a las ${app.time}`}
+                        className="h-9 px-3.5 rounded-full bg-surface-container text-on-surface-variant hover:text-error transition-colors font-label-md"
+                      >
+                        Cancelar
+                      </button>
                     </>
+                  )}
+
+                  {isConfirmed && confirmingCancelId === app.id && (
+                    <div role="group" aria-label="Confirmar cancelación" className="flex flex-wrap items-center gap-2">
+                      <span className="font-label-md text-on-surface">¿Cancelar la cita? El turno quedará libre.</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCancelConfirmed(app.id)}
+                        className="h-9 px-3.5 rounded-full bg-error-container text-on-error-container hover:opacity-90 transition-opacity font-label-md"
+                      >
+                        Sí, cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingCancelId(null)}
+                        className="h-9 px-3.5 rounded-full bg-surface-container text-on-surface font-label-md"
+                      >
+                        No
+                      </button>
+                    </div>
                   )}
 
                   {isPending && (

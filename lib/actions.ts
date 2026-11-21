@@ -674,6 +674,7 @@ export async function createServiceAction(
         durationMinutes: newServiceData.duration_minutes,
         icon: newServiceData.icon,
         imageUrl: newServiceData.image_url,
+        reserveAmount: newServiceData.reserve_amount ?? 0, // antes se perdía (verificación 4.10)
       },
     });
     if (!res.ok) return { ok: false, message: res.message };

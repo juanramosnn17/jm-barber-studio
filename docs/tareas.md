@@ -46,14 +46,14 @@
 - [x] 3.20 *(Reportada por el estudiante.)* En "Vista de Cliente", el admin o barbero no tenía cómo volver a `/admin`. `AppHeader` ahora muestra "Volver al panel" y "Panel Principal" apunta a `/admin` según el rol real del usuario (criterio nuevo en F3). Verificado en producción por el estudiante.
 - [x] 3.21 Permisos del barbero (spec F4, "Permisos por rol") — verificado en producción con `juanramosnn17` como barbero: ocultar Servicios/Horarios/Usuarios en `AdminSidebar`, redirigir esas rutas a `/admin` en `proxy.ts`, quitar al barbero de la política de lectura de `profiles` y darle solo nombre y apellido de clientes con `get_client_names(ids)`.
 - [x] 3.22 *(Pedida por el estudiante.)* Quitar el botón "Panel Administrativo" de la portada y mostrar "Panel Principal" del menú de perfil solo a `admin` y `barbero` (2 criterios nuevos en F1). Verificado en producción: la portada no tiene el botón (curl) y el estudiante confirmó que un cliente no ve "Panel Principal".
-- [ ] 3.23 *(Pedida por el estudiante.)* Anular gastos con motivo obligatorio: columnas `void_reason` y `voided_at` en `expenses`, `voidExpenseAction` y botón en el comprobante (spec F5).
-- [ ] 3.24 *(Pedida por el estudiante.)* Editar gastos registrados: `updateExpenseAction` y formulario en el comprobante (spec F5).
-- [ ] 3.25 *(Pedida por el estudiante.)* Eliminar gastos con confirmación: `deleteExpenseAction` y botón en el comprobante (spec F5).
-- [ ] 3.26 *(Pedida por el estudiante.)* Ajustar el pago de una cita completada (método, descuento, reembolso): `adjustAppointmentPaymentAction` y formulario en el comprobante (spec F5).
+- [x] 3.23 *(Pedida por el estudiante.)* Anular gastos con motivo obligatorio: columnas `void_reason` y `voided_at` en `expenses`, `voidExpenseAction` y botón en el comprobante (spec F5). *(Verificada con Spring Boot el 2026-11-21: ver `docs/verificacion-springboot.md`.)*
+- [x] 3.24 *(Pedida por el estudiante.)* Editar gastos registrados: `updateExpenseAction` y formulario en el comprobante (spec F5). *(Verificada con Spring Boot el 2026-11-21: ver `docs/verificacion-springboot.md`.)*
+- [x] 3.25 *(Pedida por el estudiante.)* Eliminar gastos con confirmación: `deleteExpenseAction` y botón en el comprobante (spec F5). *(Verificada con Spring Boot el 2026-11-21: ver `docs/verificacion-springboot.md`.)*
+- [x] 3.26 *(Pedida por el estudiante.)* Ajustar el pago de una cita completada (método, descuento, reembolso): `adjustAppointmentPaymentAction` y formulario en el comprobante (spec F5). *(Verificada con Spring Boot el 2026-11-21: ver `docs/verificacion-springboot.md`.)*
 
 ## Contabilidad para la barbería (rediseño pedido por el estudiante)
 > Orden: 3.27 → 3.28 → 3.29 → 3.30 → 3.31. Spec: `docs/specs/F5-contabilidad-y-ganancias.md` → "Modelo contable de la barbería".
-- [ ] 3.27 Reserva fija por servicio sin comisión: columna `services.reserve_amount` (editable en `/admin/servicios`), `appointments.reserve_amount` fijada al completar, y motor contable con Ingresos · Reserva · Tu ganancia · Gastos · Saldo de la reserva. **Código y base hechos; falta verificar en producción.**
+- [x] 3.27 Reserva fija por servicio sin comisión: columna `services.reserve_amount` (editable en `/admin/servicios`), `appointments.reserve_amount` fijada al completar, y motor contable con Ingresos · Reserva · Tu ganancia · Gastos · Saldo de la reserva. **Código y base hechos; falta verificar en producción.** *(Verificada con Spring Boot el 2026-11-21: ver `docs/verificacion-springboot.md`.)*
 - [x] 3.28 Simplificar pantallas de contabilidad: 5 tarjetas, sin "barbero" ni márgenes %, periodos reducidos y tabla de 6 columnas con fila clicable. Verificado por el estudiante en producción (y ajustado a su pedido: sin encabezado, sin perfil en el menú, movimientos solo con dinero real).
 - [x] 3.29 Categoría "Compra de insumos / productos" en gastos y propinas por cita (aparte de los ingresos). *(Verificada en el navegador con Spring Boot el 2026-11-21: la categoría aparece al registrar un gasto, y una propina de $3.000 se muestra aparte sin cambiar Ingresos ni Reserva.)*
 - [x] 3.30 Venta de productos: nueva tabla `product_sales` con registrar, anular y eliminar; suma a Ingresos. *(Verificada en el navegador con Spring Boot el 2026-11-21: venta de $18.000 por Nequi → Ingresos y Tu ganancia +$18.000; anulada, deja de sumar. Eliminar se probó con las pruebas automáticas.)*
@@ -71,7 +71,13 @@
 - [x] 4.7 Gastos: registrar, editar, anular con motivo y eliminar; ajuste de pago de citas (método, descuento, reembolso, propina).
 - [x] 4.8 Contabilidad: reporte con el modelo de reserva (Ingresos · Tu ganancia · Reserva · Gastos · Saldo) y exportación CSV saneada.
 - [x] 4.9 Conectar Next.js: cliente HTTP en `lib/api/`, las Server Actions y consultas llaman a la API, token JWT en cookie `httpOnly`, y `proxy.ts` valida la sesión con `GET /auth/me`. El modo demo (store en memoria) se mantiene cuando `API_URL` no está definida.
-- [ ] 4.10 Verificar en el navegador todos los criterios de F1–F5 contra el backend Spring Boot y registrar el resultado en `docs/verificacion-springboot.md`.
+- [x] 4.10 Verificar en el navegador todos los criterios de F1–F5 contra el backend Spring Boot y registrar el resultado en `docs/verificacion-springboot.md`. *(Hecha el 2026-11-21: 43 de 43 criterios del back en vivo y recorrido de pantallas como barbero, cliente y admin. Quedaron 2 fallas y 2 menores, que pasan a la 4.14.)*
+- [ ] 4.14 Correcciones encontradas en la 4.10 (ver `docs/verificacion-springboot.md`):
+  - agenda: botón para cancelar citas `confirmada` (F3-UI3);
+  - `/api/accounting/profit-report` en JSON a través de la API cuando `API_URL` está activa (auditoría #9);
+  - la reserva escrita al crear un servicio se guarda (F4-UI5);
+  - el resumen de la reserva muestra la duración (F2-UI1);
+  - las specs F2 y F3 alinean los códigos 400/403 con el contrato Spring Boot.
 - [ ] 4.11 Retirar Supabase del frontend (dependencias, variables y archivos `lib/supabase/*`) cuando 4.10 esté completa. El despliegue del backend en AWS queda para la Unidad 6.
 - [x] 4.13 Seguridad del frontend (auditoría, hallazgos 3 y 7). *(Hecha y verificada el 2026-11-21: solo `actions.ts` y `public-actions.ts` exponen acciones; iniciar sesión desde `?return_url=/\evil.com` termina en `/cliente`; un destino legítimo con `?serviceId=…#booking-flow` se conserva; la reserva sigue cargando los horarios.)*
   - pasar `lib/data/queries.ts` a `server-only` y dejar en un archivo `"use server"` aparte solo lo que llama el navegador (`getBookedRangesByDate`), para que las lecturas de admin no se puedan invocar como acciones;

@@ -78,3 +78,34 @@ jm-barber-studio-main/
 - **Frontend y Backend Serverless:** Diseñado para despliegue directo en **Vercel** (detección automática de Next.js App Router).
 - **Base de datos y Auth en la nube:** **Supabase** (configurado mediante variables de entorno `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`). Si no se definen en el entorno de despliegue, el sistema opera automáticamente sobre el store en memoria (`lib/data/store.ts`) con datos semilla precargados.
 - **Estado actual (2026-11-14):** el front está publicado en https://jm-barber-studio-delta.vercel.app con despliegue continuo desde `main` de GitHub, en **modo demo** (sin variables de Supabase). **Actualización:** desde el paso 10 del backend, Vercel tiene las variables de Supabase (Production y Preview) y la URL pública usa el proyecto "Barberia JM". La conexión con Supabase en la nube está planificada en `docs/tareas.md` → "Back · Supabase en la nube" (tareas 3.1–3.14). El contrato de cada operación del servidor está en `docs/contratos/api.md`.
+
+## Backend Spring Boot (Unidad 4, en construcción)
+> Reemplaza a Supabase. Plan: tareas 4.1–4.11 de `docs/tareas.md`. Contrato: `docs/contratos/api-rest.md`.
+
+```
+Navegador ──> Next.js (Vercel) ──HTTP + JWT──> Spring Boot API (backend/, :8080) ──JPA──> MySQL (jm_barber)
+               Server Actions / consultas        Spring Security (roles)            Flyway (migraciones)
+```
+
+```
+backend/
+├── mvnw, pom.xml                      # Maven Wrapper (no requiere Maven instalado), Java 21
+└── src/main/
+    ├── java/com/jmbarber/api/
+    │   ├── auth/          # registro, login, JWT, /auth/me
+    │   ├── services/      # catálogo y reserva por servicio
+    │   ├── schedule/      # horario de atención
+    │   ├── appointments/  # citas, horas ocupadas, estados, pagos
+    │   ├── users/         # gestión de usuarios (admin)
+    │   ├── expenses/      # gastos (registrar, editar, anular, eliminar)
+    │   ├── accounting/    # reporte con modelo de reserva y CSV
+    │   └── common/        # errores uniformes, seguridad, configuración
+    └── resources/
+        ├── application.yml            # lee DB_URL, DB_USER, DB_PASSWORD, JWT_SECRET del entorno
+        └── db/migration/V1__esquema.sql
+```
+
+- **Capas por dominio:** `Controller` (HTTP y validación) → `Service` (reglas de negocio de las specs) → `Repository` (Spring Data JPA) → MySQL.
+- **Seguridad:** filtro JWT + `@PreAuthorize` por rol. La validación de dueño (por ejemplo, el cliente solo cancela sus citas) va en el `Service`.
+- **Errores:** un `@RestControllerAdvice` produce siempre `{ status, code, message }` en español.
+- **Despliegue:** local en esta unidad; AWS en la Unidad 6.

@@ -7,6 +7,7 @@
 - **Back:** Next.js Server Actions (`lib/actions.ts`), Server Queries (`lib/data/queries.ts`) y Route Handlers (`app/api/`)
 - **Base de datos y Auth:** Supabase (`@supabase/supabase-js`, `@supabase/ssr`, PostgreSQL con RLS en `supabase/schema.sql`) + Store híbrido en memoria (`lib/data/store.ts`)
 - **Despliegue:** Vercel (front y funciones serverless) · Supabase (base de datos gestionada)
+- **Backend nuevo (Unidad 4, en construcción):** Spring Boot 3 + Java 21 + MySQL + Flyway + Spring Security (JWT) en `backend/`. Reemplazará a Supabase (tareas 4.1–4.11). Contrato: `@docs/contratos/api-rest.md`.
 
 ## Documentación (léela antes de cualquier cambio)
 - Qué es el producto, usuarios y qué NO entra: `@docs/producto.md`
@@ -20,6 +21,7 @@
   - `@docs/specs/F5-contabilidad-y-ganancias.md`
 - Plantilla para nuevas specs: `@docs/specs/F0-plantilla.md`
 - Contrato de datos y API (backend): `@docs/contratos/api.md`
+- Contrato API REST del backend Spring Boot: `@docs/contratos/api-rest.md`
 - Guía paso a paso del backend por prioridad: `GUIA_BACKEND.md`
 - Referencias visuales: `docs/diseno/referencias/`
 - Decisiones técnicas y supuestos: `@docs/decisiones.md`
@@ -34,6 +36,7 @@
 - **Seguridad:** Nunca escribas llaves o credenciales en el código; usa `.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`). Respeta la validación de roles en `lib/supabase/proxy.ts` (`admin`, `barbero`, `cliente`).
 - **Estado del backend:** front y backend terminados. La app publicada en Vercel usa el proyecto Supabase "Barberia JM" y los 18 criterios **[Back]** se cumplen (`docs/verificacion-back.md`). Toda tarea nueva se registra en `docs/tareas.md` y no se marca como hecha hasta verificar sus criterios en el navegador.
 - **Reglas del backend (Supabase):** todo cambio de tabla, política RLS o función va primero en `supabase/schema.sql` y en `docs/contratos/api.md`, y luego se aplica al proyecto (puede usarse el conector MCP de Supabase). Las políticas usan `is_admin()` / `get_my_role()`, nunca una subconsulta directa a `profiles`. Cada Server Action valida el rol en el servidor y revisa el `error` de Supabase antes de responder `ok: true`. La `service_role` key nunca se usa en el código del cliente ni con prefijo `NEXT_PUBLIC_`.
+- **Reglas del backend Spring Boot:** cada endpoint va primero en `docs/contratos/api-rest.md`; cada cambio de tabla es una migración Flyway nueva (nunca se edita una ya aplicada); credenciales y `JWT_SECRET` solo en variables de entorno; roles validados con Spring Security y la validación de dueño en la capa `Service`; errores siempre `{ status, code, message }` en español. Se ejecuta con `backend/mvnw` (Java 21).
 - **Regla Next.js 16:** Mantén intacta la referencia a `@AGENTS.md` y consulta `node_modules/next/dist/docs/` ante dudas de APIs de Next.js 16 (ej. `searchParams` como `Promise`).
 
 ## Convenciones del código

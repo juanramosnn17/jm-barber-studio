@@ -58,3 +58,18 @@
 - [ ] 3.29 Categoría "Compra de insumos / productos" en gastos y propinas por cita (aparte de los ingresos).
 - [ ] 3.30 Venta de productos: nueva tabla `product_sales` con registrar, anular y eliminar; suma a Ingresos.
 - [ ] 3.31 Cierre de caja del día por método de pago y efectivo esperado en caja.
+
+## Back · Spring Boot + MySQL (Unidad 4)
+> El curso exige el backend en **Spring Boot**. Reemplaza a Supabase con las mismas reglas (specs F1–F5). Contrato: `docs/contratos/api-rest.md`. Código en `backend/`. Una tarea a la vez: cada una se prueba (pruebas automáticas + navegador/Postman) antes de pasar a la siguiente.
+
+- [ ] 4.1 Crear el proyecto Spring Boot 3 (Java 21, Maven Wrapper) en `backend/` con Web, Validation, Data JPA, Security, MySQL y Flyway. Arranca en `http://localhost:8080` y responde `GET /api/v1/health`.
+- [ ] 4.2 Base MySQL local `jm_barber` con usuario propio; credenciales solo en variables de entorno (`DB_URL`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`), nunca en el código. Migración Flyway `V1` con las tablas `users`, `services`, `business_hours`, `appointments` (columna `active_slot` única) y `expenses`, más datos semilla (6 servicios y horario).
+- [ ] 4.3 Autenticación: registro (rol siempre CLIENTE), login con BCrypt y JWT, `GET /auth/me`, y Spring Security con roles. Pruebas: credenciales incorrectas → 401; cliente en endpoint de admin → 403.
+- [ ] 4.4 Servicios y horario: `GET/POST /services`, activar/desactivar, reserva por servicio, `GET/PUT /business-hours`.
+- [ ] 4.5 Citas: horas ocupadas, reservar (rechaza el pasado y el turno ocupado con 409), próxima cita, agenda del día, cambio de estado con permisos por rol y fijación de la reserva al completar.
+- [ ] 4.6 Usuarios (admin): listado paginado, editar datos y rol, eliminar; el admin no puede eliminarse ni quitarse el rol.
+- [ ] 4.7 Gastos: registrar, editar, anular con motivo y eliminar; ajuste de pago de citas (método, descuento, reembolso, propina).
+- [ ] 4.8 Contabilidad: reporte con el modelo de reserva (Ingresos · Tu ganancia · Reserva · Gastos · Saldo) y exportación CSV saneada.
+- [ ] 4.9 Conectar Next.js: cliente HTTP en `lib/api/`, las Server Actions y consultas llaman a la API, token JWT en cookie `httpOnly`, y `proxy.ts` valida la sesión con `GET /auth/me`. El modo demo (store en memoria) se mantiene cuando `API_URL` no está definida.
+- [ ] 4.10 Verificar en el navegador todos los criterios de F1–F5 contra el backend Spring Boot y registrar el resultado en `docs/verificacion-springboot.md`.
+- [ ] 4.11 Retirar Supabase del frontend (dependencias, variables y archivos `lib/supabase/*`) cuando 4.10 esté completa. El despliegue del backend en AWS queda para la Unidad 6.

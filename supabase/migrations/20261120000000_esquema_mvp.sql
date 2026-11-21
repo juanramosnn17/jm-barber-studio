@@ -271,10 +271,43 @@ begin
     if old.status = 'completada' then
       raise exception 'Solo el administrador puede modificar una cita completada' using errcode = '42501';
     end if;
-    if new.discount_amount is distinct from old.discount_amount
+
+    -- El barbero nunca puede cambiar cliente, servicio, fecha, horario ni ajustes financieros
+    if new.client_id is distinct from old.client_id
+       or new.service_id is distinct from old.service_id
+       or new.date is distinct from old.date
+       or new.time is distinct from old.time
+       or new.end_time is distinct from old.end_time
+       or new.notes is distinct from old.notes
+       or new.discount_amount is distinct from old.discount_amount
        or new.refund_amount is distinct from old.refund_amount
        or new.tip_amount is distinct from old.tip_amount then
-      raise exception 'Solo el administrador puede ajustar pagos' using errcode = '42501';
+      raise exception 'Solo el administrador puede modificar esos campos de la cita' using errcode = '42501';
+    end if;
+
+    -- Al completar una cita, la BD impone precio/reserva desde services y cobro en efectivo
+    if new.status = 'completada' then
+      select s.price, s.reserve_amount
+        into new.gross_amount, new.reserve_amount
+        from public.services s
+       where s.id = old.service_id;
+      new.payment_status := 'pagado';
+      new.payment_method := 'efectivo';
+      new.paid_at := coalesce(new.paid_at, now());
+    elsif new.status = 'cancelada' then
+      new.payment_status := 'anulado';
+      new.payment_method := old.payment_method;
+      new.gross_amount := old.gross_amount;
+      new.reserve_amount := old.reserve_amount;
+      new.paid_at := old.paid_at;
+    else
+      if new.payment_status is distinct from old.payment_status
+         or new.payment_method is distinct from old.payment_method
+         or new.gross_amount is distinct from old.gross_amount
+         or new.reserve_amount is distinct from old.reserve_amount
+         or new.paid_at is distinct from old.paid_at then
+        raise exception 'Solo el administrador puede ajustar pagos' using errcode = '42501';
+      end if;
     end if;
   end if;
 

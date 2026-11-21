@@ -73,6 +73,7 @@
 - [ ] 4.9 Conectar Next.js: cliente HTTP en `lib/api/`, las Server Actions y consultas llaman a la API, token JWT en cookie `httpOnly`, y `proxy.ts` valida la sesión con `GET /auth/me`. El modo demo (store en memoria) se mantiene cuando `API_URL` no está definida.
 - [ ] 4.10 Verificar en el navegador todos los criterios de F1–F5 contra el backend Spring Boot y registrar el resultado en `docs/verificacion-springboot.md`.
 - [ ] 4.11 Retirar Supabase del frontend (dependencias, variables y archivos `lib/supabase/*`) cuando 4.10 esté completa. El despliegue del backend en AWS queda para la Unidad 6.
+- [ ] 4.12 Alineación con `docs/datos/modelo.md` (migración Flyway `V3`): `PUT /services/{id}` para editar servicios/duración, columna `appointments.end_time` con validación de no solapamiento y `GET /appointments/booked-ranges`, `ON DELETE SET NULL` en `appointments.client_id` (cancelando citas futuras al borrar usuario) y bloqueo `403` para que `BARBERO` no modifique citas `COMPLETADA`. Ver `docs/contratos/api-rest.md` §9.
 
 ## Back (U4) · Plan de instalaciones (Supabase + Next.js)
 > Orden: configuración → inicio de sesión → lecturas públicas → escrituras → auditoría.
@@ -93,7 +94,7 @@
   - **Criterio:** F1 (visitante ve solo `is_active = true`), F2 (horario incluye `slot_minutes`).
   - **Verificación:** consultar `/` sin sesión y comprobar que un servicio con `is_active = false` no aparece; revisar con `curl` que la portada responde 200 sin exponer datos privados.
 
-- [ ] **T-B4 · Administración de servicios editables y paso de agenda `slot_minutes` (F4)**
+- [x] **T-B4 · Administración de servicios editables y paso de agenda `slot_minutes` (F4)**
   - **Archivos:** `lib/actions.ts` (`updateServiceAction`, `createServiceAction`, `updateServiceReserveAction`, `updateBusinessHoursAction`), `components/admin/ServicesManager.tsx`, `components/admin/ScheduleConfig.tsx`
   - **Criterio:** F4 (editar nombre, precio, `duration_minutes` y `reserve_amount` de servicios existentes; editar `slot_minutes` en horarios; rechazo 400 si `reserve_amount > price`, `duration_minutes <= 0` o horario inválido; rechazo 403 para cliente/barbero).
   - **Verificación:** editar duración de un servicio de 40 a 60 min y cambiar `slot_minutes` a 15/30 min; probar intento de guardar `reserve_amount > price` y llamada directa como cliente (debe fallar).

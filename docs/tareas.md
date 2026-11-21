@@ -78,7 +78,7 @@
 > Orden: configuración → inicio de sesión → lecturas públicas → escrituras → auditoría.
 > Cada tarea corresponde a una operación del contrato (`docs/contratos/api.md`) o pieza transversal, aplica la skill `backend-seguro` y cabe en un commit.
 
-- [ ] **T-B1 · Configuración, migración y zona horaria (transversal)**
+- [x] **T-B1 · Configuración, migración y zona horaria (transversal)**
   - **Archivos:** `supabase/migrations/20261120000000_esquema_mvp.sql`, `supabase/seed.sql`, `.env.local.example`, `app/admin/page.tsx`
   - **Criterio:** RLS activo en las 6 tablas, sin `service_role` con `NEXT_PUBLIC_`, y fecha del dashboard admin calculada en `America/Bogota` (`nowInStudio()`).
   - **Verificación:** ejecutar `supabase/seed.sql` en el SQL Editor, comprobar `rowsecurity = true` en las 6 tablas, verificar Security Advisors sin alertas críticas y revisar `grep` de secretos.

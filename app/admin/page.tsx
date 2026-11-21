@@ -7,7 +7,7 @@ import {
   getAppointmentsByDate,
   getCurrentProfile,
 } from "@/lib/data/queries";
-import { toISODate } from "@/lib/format";
+import { nowInStudio } from "@/lib/schedule";
 
 export const metadata: Metadata = {
   title: "Panel del Administrador",
@@ -15,7 +15,8 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminDashboardPage() {
-  const todayISO = toISODate(new Date());
+  // Fecha "hoy" en zona horaria del estudio (America/Bogota), no UTC del servidor (T-B1)
+  const todayISO = nowInStudio().dateISO;
 
   // DATOS DE SUPABASE: Carga de citas de la jornada
   const [adminUser, appointments] = await Promise.all([

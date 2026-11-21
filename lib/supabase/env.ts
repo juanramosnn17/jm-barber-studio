@@ -10,9 +10,11 @@
 // DATOS DE SUPABASE: URL de tu proyecto (Supabase → Project Settings → API).
 export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 
-// DATOS DE SUPABASE: clave pública "anon" (es segura en el navegador porque
-// las reglas RLS de la base de datos limitan lo que puede hacer).
-export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+// DATOS DE SUPABASE: clave pública (publishable o anon legacy; segura en el navegador con RLS).
+export const SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+  "";
 
 /** Devuelve true si las dos variables de Supabase están definidas. */
 export function isSupabaseConfigured(): boolean {

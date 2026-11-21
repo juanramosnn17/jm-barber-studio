@@ -62,7 +62,7 @@
 ## Back · Spring Boot + MySQL (Unidad 4)
 > El curso exige el backend en **Spring Boot**. Reemplaza a Supabase con las mismas reglas (specs F1–F5). Contrato: `docs/contratos/api-rest.md`. Código en `backend/`. Una tarea a la vez: cada una se prueba (pruebas automáticas + navegador/Postman) antes de pasar a la siguiente.
 
-- [ ] 4.1 Crear el proyecto Spring Boot 3 (Java 21, Maven Wrapper) en `backend/` con Web, Validation, Data JPA, Security, MySQL y Flyway. Arranca en `http://localhost:8080` y responde `GET /api/v1/health`.
+- [x] 4.1 Crear el proyecto Spring Boot 4.2 (Java 21, Maven Wrapper) en `backend/` con Web, Validation, Data JPA, Security, MySQL y Flyway. Arranca en `http://localhost:8080` y responde `GET /api/v1/health`. Hecho: Spring Boot 4.2.0 (Initializr ya no ofrece la 3.x). `GET /api/v1/health` → 200; otra ruta sin token → 401; 3 pruebas JUnit pasan; verificado en el navegador.
 - [ ] 4.2 Base MySQL local `jm_barber` con usuario propio; credenciales solo en variables de entorno (`DB_URL`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`), nunca en el código. Migración Flyway `V1` con las tablas `users`, `services`, `business_hours`, `appointments` (columna `active_slot` única) y `expenses`, más datos semilla (6 servicios y horario).
 - [ ] 4.3 Autenticación: registro (rol siempre CLIENTE), login con BCrypt y JWT, `GET /auth/me`, y Spring Security con roles. Pruebas: credenciales incorrectas → 401; cliente en endpoint de admin → 403.
 - [ ] 4.4 Servicios y horario: `GET/POST /services`, activar/desactivar, reserva por servicio, `GET/PUT /business-hours`.

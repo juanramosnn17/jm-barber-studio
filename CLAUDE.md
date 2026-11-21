@@ -7,7 +7,7 @@
 - **Back:** Next.js Server Actions (`lib/actions.ts`), Server Queries (`lib/data/queries.ts`) y Route Handlers (`app/api/`)
 - **Base de datos y Auth:** Supabase (`@supabase/supabase-js`, `@supabase/ssr`, PostgreSQL con RLS en `supabase/schema.sql`) + Store híbrido en memoria (`lib/data/store.ts`)
 - **Despliegue:** Vercel (front y funciones serverless) · Supabase (base de datos gestionada)
-- **Backend nuevo (Unidad 4, en construcción):** Spring Boot 3 + Java 21 + MySQL + Flyway + Spring Security (JWT) en `backend/`. Reemplazará a Supabase (tareas 4.1–4.11). Contrato: `@docs/contratos/api-rest.md`.
+- **Backend nuevo (Unidad 4, en construcción):** Spring Boot 4.2 + Java 21 + MySQL + Flyway + Spring Security (JWT) en `backend/`. Reemplazará a Supabase (tareas 4.1–4.11). Contrato: `@docs/contratos/api-rest.md`.
 
 ## Documentación (léela antes de cualquier cambio)
 - Qué es el producto, usuarios y qué NO entra: `@docs/producto.md`

@@ -1,6 +1,6 @@
 # Contrato API REST · Backend Spring Boot (Unidad 4)
 
-> Contrato del backend en **Spring Boot 3 + Java 21 + MySQL** (carpeta `backend/`). Reemplaza a Supabase manteniendo las **mismas reglas de negocio** de `docs/specs/F1..F5` y del contrato actual `docs/contratos/api.md`. Si un endpoint cambia, se actualiza aquí **antes** del código.
+> Contrato del backend en **Spring Boot 4.2 + Java 21 + MySQL** (carpeta `backend/`). Reemplaza a Supabase manteniendo las **mismas reglas de negocio** de `docs/specs/F1..F5` y del contrato actual `docs/contratos/api.md`. Si un endpoint cambia, se actualiza aquí **antes** del código.
 
 ## Convenciones
 - **Base URL:** `http://localhost:8080/api/v1` (local). En producción, la variable `API_URL` del frontend.

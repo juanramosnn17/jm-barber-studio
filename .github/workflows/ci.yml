@@ -1,0 +1,105 @@
+# =====================================================================
+# CI · JM Barber Studio (tarea 4.16)
+# Filtro ANTES de publicar: corre en cada Pull Request y en cada push a main.
+# Si algo falla aquí, no se hace merge (y Render no despliega: render.yaml
+# usa autoDeployTrigger: checksPass).
+#   - backend:  pruebas de integración JUnit + MockMvc contra MySQL 8 real
+#   - frontend: lint, tipos, pruebas unitarias del motor contable y build
+#               de Next.js (modo demo, sin API_URL)
+# No usa ningún secreto real: la base es temporal y el JWT_SECRET se genera
+# aleatorio en cada ejecución.
+# =====================================================================
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend · pruebas de integración
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: jm_barber_test
+          MYSQL_USER: jm_ci
+          MYSQL_PASSWORD: jm_ci_password
+          MYSQL_ROOT_PASSWORD: jm_ci_root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pjm_ci_root"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      TZ: America/Bogota
+      DB_URL: jdbc:mysql://127.0.0.1:3306/jm_barber_test?serverTimezone=America/Bogota
+      DB_TEST_URL: jdbc:mysql://127.0.0.1:3306/jm_barber_test?serverTimezone=America/Bogota
+      DB_USER: jm_ci
+      DB_PASSWORD: jm_ci_password
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Generar JWT_SECRET temporal
+        run: echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+
+      - name: Preparar Maven Wrapper (repo clonado desde Windows)
+        run: sed -i 's/\r$//' mvnw && chmod +x mvnw
+
+      - name: Pruebas de integración (./mvnw verify)
+        run: ./mvnw -B verify
+
+      - name: Guardar reportes de pruebas si fallan
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reportes-junit
+          path: backend/target/surefire-reports/
+          retention-days: 7
+
+  frontend:
+    name: Frontend · lint, tipos y build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Tipos
+        run: npm run typecheck
+      - name: Pruebas unitarias (motor contable)
+        run: npm run test:unit
+      - name: Build de Next.js
+        run: npm run build

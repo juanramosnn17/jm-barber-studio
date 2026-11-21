@@ -11,7 +11,8 @@ services:
     rootDir: backend
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/v1/health
-    autoDeploy: true
+    # Solo despliega cuando el CI de GitHub (.github/workflows/ci.yml) pasa (tarea 4.16)
+    autoDeployTrigger: checksPass
     envVars:
       - key: TZ
         value: America/Bogota

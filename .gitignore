@@ -44,3 +44,9 @@ next-env.d.ts
 
 # archives
 *.zip
+
+# Playwright (tarea 4.16)
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

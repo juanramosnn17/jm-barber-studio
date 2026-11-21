@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /** Criterios de la tarea 4.1 (docs/tareas.md). */
 @SpringBootTest
+@org.springframework.test.context.ActiveProfiles("test")
 @AutoConfigureMockMvc
 class HealthControllerTest {
 

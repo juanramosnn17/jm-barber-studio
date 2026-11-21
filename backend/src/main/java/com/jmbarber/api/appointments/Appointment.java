@@ -116,13 +116,25 @@ public class Appointment {
         } else if (newStatus == Status.CANCELADA) {
             paymentStatus = PaymentStatus.ANULADO;
         } else if (newStatus != Status.COMPLETADA) {
-            // vuelve a un estado activo: sin cobro ni reserva
+            // vuelve a un estado activo: sin cobro, reserva ni ajustes
             paymentStatus = PaymentStatus.PENDIENTE;
             paymentMethod = null;
             grossAmount = null;
             reserveAmount = null;
             paidAt = null;
+            discountAmount = BigDecimal.ZERO;
+            refundAmount = BigDecimal.ZERO;
+            tipAmount = BigDecimal.ZERO;
         }
+    }
+
+    /** Ajuste del pago de una cita completada (tareas 3.26 y 3.29). Las validaciones van en el servicio. */
+    public void adjustPayment(PaymentMethod method, BigDecimal discount, BigDecimal refund, BigDecimal tip) {
+        this.paymentMethod = method;
+        this.discountAmount = discount;
+        this.refundAmount = refund;
+        this.tipAmount = tip;
+        this.paymentStatus = refund.signum() > 0 ? PaymentStatus.REEMBOLSADO : PaymentStatus.PAGADO;
     }
 
     public String getId() { return id; }
@@ -136,5 +148,8 @@ public class Appointment {
     public PaymentMethod getPaymentMethod() { return paymentMethod; }
     public BigDecimal getGrossAmount() { return grossAmount; }
     public BigDecimal getReserveAmount() { return reserveAmount; }
+    public BigDecimal getDiscountAmount() { return discountAmount; }
+    public BigDecimal getRefundAmount() { return refundAmount; }
+    public BigDecimal getTipAmount() { return tipAmount; }
     public Instant getPaidAt() { return paidAt; }
 }

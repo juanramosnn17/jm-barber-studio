@@ -76,9 +76,20 @@ Detalles (tarea 4.5):
   - **Cliente:** solo puede pasar a `CANCELADA` una cita suya. Si es ajena → 403; si ya está completada, cancelada o en curso → 409 `"Esta cita ya no se puede cancelar."`.
   - **Al completar:** `paymentStatus = PAGADO`, `paymentMethod = EFECTIVO`, `grossAmount` = precio del servicio, `reserveAmount` = reserva del servicio en ese momento, `paidAt` = ahora.
   - **Al cancelar:** `paymentStatus = ANULADO`.
-  - **Si una cita completada vuelve a otro estado activo:** se borran el cobro y la reserva (`paymentStatus = PENDIENTE`).
+  - **Si una cita completada vuelve a otro estado activo:** se borran el cobro, la reserva, el descuento, el reembolso y la propina (`paymentStatus = PENDIENTE`).
   - **Si una cita cancelada se reactiva en un turno que ya tomó otra persona:** 409 `SLOT_TAKEN`.
   - Id inexistente → 404.
+
+**Ajuste de pago (tareas 3.26, 3.29 y 4.7):** `PATCH /appointments/{id}/payment` es solo para el ADMIN y recibe `{ paymentMethod, discountAmount, refundAmount, tipAmount }`.
+- **Validaciones:**
+  - los montos se redondean a pesos enteros;
+  - un monto negativo → 400;
+  - `discountAmount + refundAmount` mayor que el valor cobrado (`grossAmount`) → 400 con el mensaje de la tabla;
+  - la cita no está `COMPLETADA` → 409 `NOT_COMPLETED`;
+  - id inexistente → 404.
+- **Resultado:** `paymentStatus` queda `REEMBOLSADO` si hay reembolso y `PAGADO` si no.
+- **Respuesta:** `200 { id, paymentStatus, paymentMethod, grossAmount, discountAmount, refundAmount, tipAmount, netAmount }`, con `netAmount = grossAmount − discountAmount − refundAmount`.
+- La **propina** no suma a los ingresos ni a la reserva; se reporta aparte (F5).
 
 **Regla de negocio (F2):** una sola cita no cancelada por `(date, time)`. MySQL no tiene índices parciales, así que se usa una columna generada `active_slot` (vale `date+time` si no está cancelada y `NULL` si lo está) con índice `UNIQUE`; MySQL permite varios `NULL`.
 
@@ -108,6 +119,20 @@ Detalles (tarea 4.6):
 | `PUT /expenses/{id}` | mismos campos | `200` (solo si está `REGISTRADO`) | ADMIN | 409 `"Un gasto anulado no se puede editar."` |
 | `POST /expenses/{id}/void` | `{ reason }` | `200` (`ANULADO` + `voidReason`, `voidedAt`) | ADMIN | 400 `"Escribe el motivo de la anulación."` · 409 `"Este gasto ya está anulado."` |
 | `DELETE /expenses/{id}` | — | `204` | ADMIN | 404 |
+
+`Expense = { id, date, time, category, concept, amount, paymentMethod, status, reference, voidReason, voidedAt }`.
+
+Detalles (tarea 4.7):
+- **Al crear o editar:**
+  - `date`, `concept` y `amount` > 0 son obligatorios;
+  - el importe se redondea a pesos enteros;
+  - por defecto: `time` = `12:00`, `category` = `OTROS`, `paymentMethod` = `TRANSFERENCIA`;
+  - `PUT` reemplaza el gasto completo: un campo que no se envía vuelve a su valor por defecto, así que el frontend envía todos los campos.
+- **Errores:**
+  - categoría o método de pago inexistente → 400;
+  - editar o anular un id inexistente → 404;
+  - motivo de anulación de más de 300 caracteres → 400.
+- **Anular:** el gasto se conserva con su motivo pero deja de sumar en los totales (4.8). **Eliminar** lo borra sin rastro.
 
 Categorías: `ARRIENDO`, `SERVICIOS_PUBLICOS`, `NOMINA_ADMINISTRATIVA`, `INSUMOS_GENERALES`, `COMPRA_INSUMOS_PRODUCTOS` (tarea 3.29), `PUBLICIDAD`, `MANTENIMIENTO`, `OTROS`.
 

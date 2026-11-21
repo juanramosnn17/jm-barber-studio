@@ -1,5 +1,7 @@
 package com.jmbarber.api.appointments;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -16,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.jmbarber.api.appointments.AppointmentDtos.AppointmentResponse;
 import com.jmbarber.api.appointments.AppointmentDtos.CreateAppointmentRequest;
+import com.jmbarber.api.appointments.AppointmentDtos.PaymentRequest;
+import com.jmbarber.api.appointments.AppointmentDtos.PaymentResponse;
 import com.jmbarber.api.appointments.AppointmentEnums.Status;
 import com.jmbarber.api.common.ApiError;
 import com.jmbarber.api.common.ApiException;
@@ -36,6 +40,10 @@ public class AppointmentService {
     static final String OUTSIDE_HOURS = "Ese horario no está disponible. Elige un turno de la lista.";
     static final String SERVICE_INACTIVE = "Este servicio no está disponible.";
     static final String CANNOT_CANCEL = "Esta cita ya no se puede cancelar.";
+    static final String NOT_COMPLETED = "Solo se puede ajustar el pago de una cita completada.";
+    static final String ADJUSTMENT_TOO_HIGH = "El descuento y el reembolso no pueden superar el valor del servicio.";
+    static final String NEGATIVE_ADJUSTMENT = "El descuento y el reembolso no pueden ser negativos.";
+    static final String NEGATIVE_TIP = "La propina no puede ser negativa.";
 
     private final AppointmentRepository appointments;
     private final BarberServiceRepository services;
@@ -124,6 +132,36 @@ public class AppointmentService {
             }
         }
         return AppointmentResponse.from(appointment);
+    }
+
+    /** Ajusta método, descuento, reembolso y propina de una cita completada (contrato §4). */
+    @Transactional
+    public PaymentResponse adjustPayment(String appointmentId, PaymentRequest req) {
+        Appointment appointment = appointments.findWithDetails(appointmentId)
+            .orElseThrow(() -> ApiException.notFound("La cita no existe."));
+        if (appointment.getStatus() != Status.COMPLETADA) {
+            throw ApiException.conflict("NOT_COMPLETED", NOT_COMPLETED);
+        }
+        BigDecimal discount = pesos(req.discountAmount());
+        BigDecimal refund = pesos(req.refundAmount());
+        BigDecimal tip = pesos(req.tipAmount());
+        if (discount.signum() < 0 || refund.signum() < 0) {
+            throw ApiException.badRequest(NEGATIVE_ADJUSTMENT);
+        }
+        if (tip.signum() < 0) {
+            throw ApiException.badRequest(NEGATIVE_TIP);
+        }
+        BigDecimal gross = appointment.getGrossAmount() == null
+            ? appointment.getService().getPrice() : appointment.getGrossAmount();
+        if (discount.add(refund).compareTo(gross) > 0) {
+            throw ApiException.badRequest(ADJUSTMENT_TOO_HIGH);
+        }
+        appointment.adjustPayment(req.paymentMethod(), discount, refund, tip);
+        return PaymentResponse.from(appointment);
+    }
+
+    private static BigDecimal pesos(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value.setScale(0, RoundingMode.HALF_UP);
     }
 
     /** ¿La hora es uno de los turnos que ofrece el horario de atención ese día? */

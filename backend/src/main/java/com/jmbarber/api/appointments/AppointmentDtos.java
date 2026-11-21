@@ -1,5 +1,6 @@
 package com.jmbarber.api.appointments;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -9,6 +10,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+import com.jmbarber.api.appointments.AppointmentEnums.PaymentMethod;
 import com.jmbarber.api.appointments.AppointmentEnums.Status;
 
 /** Cuerpos de /appointments (docs/contratos/api-rest.md §4). */
@@ -40,6 +42,27 @@ public final class AppointmentDtos {
         @Pattern(regexp = "^([01]\\d|2[0-3]):[0-5]\\d$", message = "La hora debe tener el formato HH:mm.") String time,
         @Size(max = 500, message = "Las notas no pueden superar 500 caracteres.") String notes
     ) {
+    }
+
+    /** Ajuste de pago (solo ADMIN). Los montos ausentes cuentan como 0. */
+    public record PaymentRequest(
+        @NotNull(message = "Selecciona el método de pago.") PaymentMethod paymentMethod,
+        BigDecimal discountAmount,
+        BigDecimal refundAmount,
+        BigDecimal tipAmount
+    ) {
+    }
+
+    public record PaymentResponse(String id, String paymentStatus, String paymentMethod, long grossAmount,
+                                  long discountAmount, long refundAmount, long tipAmount, long netAmount) {
+
+        public static PaymentResponse from(Appointment a) {
+            long gross = a.getGrossAmount() == null ? 0 : a.getGrossAmount().longValue();
+            long discount = a.getDiscountAmount().longValue();
+            long refund = a.getRefundAmount().longValue();
+            return new PaymentResponse(a.getId(), a.getPaymentStatus().name(), a.getPaymentMethod().name(), gross,
+                discount, refund, a.getTipAmount().longValue(), gross - discount - refund);
+        }
     }
 
     public record StatusRequest(@NotNull(message = "Indica el nuevo estado de la cita.") Status status) {

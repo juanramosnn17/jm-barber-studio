@@ -23,6 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.jmbarber.api.appointments.AppointmentDtos.AppointmentResponse;
 import com.jmbarber.api.appointments.AppointmentDtos.CreateAppointmentRequest;
+import com.jmbarber.api.appointments.AppointmentDtos.PaymentRequest;
+import com.jmbarber.api.appointments.AppointmentDtos.PaymentResponse;
 import com.jmbarber.api.appointments.AppointmentDtos.StatusRequest;
 import com.jmbarber.api.common.CurrentUser;
 
@@ -65,5 +67,11 @@ public class AppointmentsController {
     public AppointmentResponse changeStatus(@AuthenticationPrincipal Jwt jwt, @PathVariable String id,
                                             @Valid @RequestBody StatusRequest request) {
         return service.changeStatus(jwt.getSubject(), CurrentUser.role(), id, request.status());
+    }
+
+    @PatchMapping("/{id}/payment")
+    @PreAuthorize("hasRole('ADMIN')")
+    public PaymentResponse adjustPayment(@PathVariable String id, @Valid @RequestBody PaymentRequest request) {
+        return service.adjustPayment(id, request);
     }
 }

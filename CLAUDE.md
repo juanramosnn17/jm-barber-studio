@@ -7,7 +7,7 @@
 - **Back (principal):** API REST en **Spring Boot 4.2 + Java 21 + MySQL + Flyway + Spring Security (JWT)** en `backend/`. Contrato: `@docs/contratos/api-rest.md`. Next.js la llama desde el servidor mediante `lib/api/` cuando está definida `API_URL` (tarea 4.9).
 - **Capa de servidor del front:** Server Actions (`lib/actions.ts`), consultas (`lib/data/queries.ts`) y Route Handlers (`app/api/`). Cada una elige el modo en este orden: API Spring Boot → Supabase → store en memoria (`lib/data/store.ts`).
 - **Supabase (solo producción actual):** el sitio de Vercel usa el proyecto "Barberia JM", con el esquema aplicado por migraciones MCP (`supabase/schema.sql`), hasta que la API se publique en la nube (U6). Se retira en la tarea 4.11.
-- **Despliegue:** Vercel (front). La API Spring Boot corre en local (`http://localhost:8080`) hasta la U6.
+- **Despliegue:** Vercel (front). La API Spring Boot corre en local (`http://localhost:8080`) y quedó lista para desplegarse en **Render** (Docker, `backend/Dockerfile` + `render.yaml`, guía en `@docs/operacion/despliegue-render.md`) o AWS/Railway sin cambiar código.
 
 ## Documentación (léela antes de cualquier cambio)
 - Qué es el producto, usuarios y qué NO entra: `@docs/producto.md`
@@ -24,6 +24,7 @@
 - Contrato de datos y API (backend): `@docs/contratos/api.md`
 - Contrato API REST del backend Spring Boot: `@docs/contratos/api-rest.md`
 - Guía paso a paso del backend por prioridad: `GUIA_BACKEND.md`
+- Guía de despliegue Spring Boot en Render: `@docs/operacion/despliegue-render.md`
 - Referencias visuales: `docs/diseno/referencias/`
 - Decisiones técnicas y supuestos: `@docs/decisiones.md`
 - Cronograma y checklist de implementación: `@docs/tareas.md`

@@ -89,26 +89,28 @@ Navegador ──> Next.js (Vercel) ──HTTP + JWT──> Spring Boot API (back
 
 ```
 backend/
+├── Dockerfile, .dockerignore          # Empaquetado multi-etapa Java 21 (Render / Railway / AWS) · tarea 4.15
 ├── mvnw, pom.xml                      # Maven Wrapper (no requiere Maven instalado), Java 21
 └── src/main/
     ├── java/com/jmbarber/api/
     │   ├── auth/          # registro, login, JWT, /auth/me
     │   ├── services/      # catálogo y reserva por servicio
     │   ├── hours/         # horario de atención
-    │   ├── appointments/  # citas, horas ocupadas, estados, ajuste de pago
+    │   ├── appointments/  # citas, rangos ocupados, estados, ajuste de pago
     │   ├── users/         # gestión de usuarios (admin)
     │   ├── expenses/      # gastos (registrar, editar, anular, eliminar)
     │   ├── sales/         # ventas de productos (registrar, anular, eliminar) · tarea 3.30
-    │   ├── accounting/    # reporte con modelo de reserva y CSV
+    │   ├── accounting/    # reporte con modelo de reserva, cierre de caja y CSV
     │   └── common/        # errores uniformes, seguridad, reloj de Colombia, CurrentUser
     └── resources/
-        ├── application.properties     # lee DB_URL, DB_USER, DB_PASSWORD, JWT_SECRET de backend/.env
+        ├── application.properties     # lee PORT, DB_URL, DB_USER, DB_PASSWORD, JWT_SECRET (env o backend/.env)
         └── db/migration/
-            ├── V1__esquema_inicial.sql      # users, services, business_hours, appointments, expenses
-            └── V2__ventas_de_productos.sql  # product_sales (3.30)
+            ├── V1__esquema_inicial.sql            # users, services, business_hours, appointments, expenses
+            ├── V2__ventas_de_productos.sql        # product_sales (3.30)
+            └── V3__duracion_y_borrado_seguro.sql  # end_time y ON DELETE SET NULL (4.12)
 ```
 
 - **Capas por dominio:** `Controller` (HTTP y validación) → `Service` (reglas de negocio de las specs) → `Repository` (Spring Data JPA) → MySQL.
 - **Seguridad:** filtro JWT + `@PreAuthorize` por rol. La validación de dueño (por ejemplo, el cliente solo cancela sus citas) va en el `Service`.
 - **Errores:** un `@RestControllerAdvice` produce siempre `{ status, code, message }` en español.
-- **Despliegue:** local en esta unidad; AWS en la Unidad 6.
+- **Despliegue:** local (`:8080`) y listo para **Render** vía Docker (`backend/Dockerfile` + `render.yaml`, ver `docs/operacion/despliegue-render.md`), compatible también con Railway o AWS sin cambiar código.

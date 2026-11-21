@@ -1,0 +1,25 @@
+# =====================================================================
+# Blueprint de Render · Backend Spring Boot (JM Barber Studio)
+# Guía paso a paso: docs/operacion/despliegue-render.md
+# Las credenciales reales NUNCA van aquí (sync: false → se ponen en el panel).
+# =====================================================================
+services:
+  - type: web
+    name: jm-barber-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: TZ
+        value: America/Bogota
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false

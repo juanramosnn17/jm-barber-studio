@@ -79,6 +79,7 @@
   - el resumen de la reserva muestra la duración (F2-UI1);
   - las specs F2 y F3 alinean los códigos 400/403 con el contrato Spring Boot.
 - [ ] 4.11 Retirar Supabase del frontend (dependencias, variables y archivos `lib/supabase/*`) cuando 4.10 esté completa. El despliegue del backend en AWS queda para la Unidad 6.
+- [x] 4.15 Preparación de despliegue de Spring Boot en Render (`backend/Dockerfile`, `backend/.dockerignore`, `render.yaml` y guía `docs/operacion/despliegue-render.md`). *(Hecha el 2026-11-21: empaquetado `.jar` verificado con `./mvnw -DskipTests package`, cero secretos en imagen, compatible con Render Free 512 MB, Railway y AWS; falta conectar el servicio en el panel de Render con un MySQL remoto y configurar `API_URL` en Vercel.)*
 - [x] 4.13 Seguridad del frontend (auditoría, hallazgos 3 y 7). *(Hecha y verificada el 2026-11-21: solo `actions.ts` y `public-actions.ts` exponen acciones; iniciar sesión desde `?return_url=/\evil.com` termina en `/cliente`; un destino legítimo con `?serviceId=…#booking-flow` se conserva; la reserva sigue cargando los horarios.)*
   - pasar `lib/data/queries.ts` a `server-only` y dejar en un archivo `"use server"` aparte solo lo que llama el navegador (`getBookedRangesByDate`), para que las lecturas de admin no se puedan invocar como acciones;
   - `getNextAppointment` sin parámetro `clientId`;

@@ -1,0 +1,8 @@
+# Nunca empaquetar secretos locales ni artefactos de compilación en la imagen Docker
+.env
+.env.*
+target/
+scripts/
+.git/
+*.md
+*.log
